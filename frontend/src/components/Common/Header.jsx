@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ASSETS } from '../../constants/assets';
 
 export default function Header() {
     return (
@@ -7,11 +8,7 @@ export default function Header() {
                 <div className="flex justify-between items-center py-4">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                            </svg>
-                        </div>
+                        <img src={ASSETS.logo} alt="UniPark Logo" className="w-8 h-8 object-contain" />
                         <span className="text-xl font-bold text-primary">UniPark</span>
                     </Link>
 

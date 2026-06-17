@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ASSETS } from '../../constants/assets';
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -51,11 +52,7 @@ export default function LoginPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                            </svg>
-                        </div>
+                        <img src={ASSETS.logo} alt="UniPark Logo" className="w-12 h-12 object-contain" />
                     </Link>
                     <h1 className="text-3xl font-bold text-blue-700">UniPark</h1>
                     <p className="text-gray-600 mt-2">Sign in to your account</p>
