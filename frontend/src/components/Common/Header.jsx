@@ -17,12 +17,12 @@ export default function Header() {
 
                     {/* Navigation */}
                     <nav className="flex items-center space-x-8">
-                        <Link to="#about" className="text-gray-600 hover:text-dark transition">
+                        <a href="#about" className="text-gray-600 hover:text-dark transition">
                             About
-                        </Link>
-                        <Link to="#contact" className="text-gray-600 hover:text-dark transition">
+                        </a>
+                        <a href="#contact" className="text-gray-600 hover:text-dark transition">
                             Contact
-                        </Link>
+                        </a>
                         <Link
                             to="/login"
                             className="bg-transparent text-black border border-black px-6 py-2 rounded-md hover:bg-blue-700 hover:text-white transition font-medium"
