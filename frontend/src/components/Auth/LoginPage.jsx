@@ -41,8 +41,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
-            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <div
+            className="min-h-screen flex items-center justify-center px-4"
+            style={{
+                backgroundImage: 'radial-gradient(circle at center, #1d4ed8 0%, #ffffff 72%)',
+            }}
+        >
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-8 w-full max-w-md border border-white/60">
                 {/* Header */}
                 <div className="text-center mb-8">
                     <Link to="/" className="inline-flex items-center space-x-2 mb-6">
@@ -52,7 +57,7 @@ export default function LoginPage() {
                             </svg>
                         </div>
                     </Link>
-                    <h1 className="text-3xl font-bold text-dark">UniPark</h1>
+                    <h1 className="text-3xl font-bold text-blue-700">UniPark</h1>
                     <p className="text-gray-600 mt-2">Sign in to your account</p>
                 </div>
 
@@ -66,7 +71,7 @@ export default function LoginPage() {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Role Selection */}
-                    <div>
+                    {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             I am a:
                         </label>
@@ -79,7 +84,7 @@ export default function LoginPage() {
                             <option value="guard">Security Guard</option>
                             <option value="admin">Administrator</option>
                         </select>
-                    </div>
+                    </div> */}
 
                     {/* Email Input */}
                     <div>
@@ -115,7 +120,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-primary text-white py-2 rounded-md hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-transparent text-black border border-black py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLoading ? 'Signing in...' : 'Sign In'}
                     </button>

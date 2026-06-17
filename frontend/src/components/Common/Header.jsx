@@ -25,7 +25,7 @@ export default function Header() {
                         </Link>
                         <Link
                             to="/login"
-                            className="bg-transparent text-black border border-black px-6 py-2 rounded-md hover:bg-blue-700 hover:text-white transition font-medium"
+                            className="bg-transparent text-black border border-black px-6 py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium"
                         >
                             Login
                         </Link>
