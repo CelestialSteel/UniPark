@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #0066CC;
+  --color-dark: #111827;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -12,4 +17,17 @@ body {
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Login Button Hover Styles */
+.login-button {
+    background-color: transparent;
+    color: #0066CC;
+    border: 1px solid #0066CC;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-button:hover {
+    background-color: #0066CC !important;
+    color: #ffffff !important;
 }

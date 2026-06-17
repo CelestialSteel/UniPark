@@ -12,20 +12,20 @@ export default function Header() {
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
                             </svg>
                         </div>
-                        <span className="text-xl font-bold text-dark">UniPark</span>
+                        <span className="text-xl font-bold text-primary">UniPark</span>
                     </Link>
 
                     {/* Navigation */}
                     <nav className="flex items-center space-x-8">
-                        <a href="#about" className="text-gray-600 hover:text-dark transition">
+                        <a href="#about" className="text-gray-600 hover:text-primary transition">
                             About
                         </a>
-                        <a href="#contact" className="text-gray-600 hover:text-dark transition">
+                        <a href="#contact" className="text-gray-600 hover:text-primary transition">
                             Contact
                         </a>
                         <Link
                             to="/login"
-                            className="bg-transparent text-black border border-black px-6 py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium"
+                            className="login-button px-6 py-2 rounded-md font-medium"
                         >
                             Login
                         </Link>

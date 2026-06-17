@@ -23,33 +23,27 @@ export default function Hero() {
 
                         {/* CTA Buttons */}
                         <div className="flex space-x-4">
-                            <Link
-                                to="#zones"
-                                className="bg-primary text-white px-8 py-3 rounded-md hover:bg-blue-700 transition font-medium inline-flex items-center space-x-2"
+                            <a
+                                href="#about"
+                                className="bg-primary text-white px-8 py-3 rounded-md hover:bg-blue-700 transition font-medium text-center inline-block"
                             >
-                                <span>Explore Zones</span>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                </svg>
-                            </Link>
-                            <button className="border-2 border-primary text-primary px-8 py-3 rounded-md hover:bg-blue-50 transition font-medium">
                                 Learn More
-                            </button>
+                            </a>
                         </div>
 
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
                             <div>
-                                <p className="text-3xl font-bold text-dark">-</p>
-                                <p className="text-gray-600 text-sm">Active Spots</p>
+                                <p className="text-3xl font-bold text-primary">1,420+</p>
+                                <p className="text-gray-600 text-sm font-medium">Active Spots</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-dark">-</p>
-                                <p className="text-gray-600 text-sm">Campus Zones</p>
+                                <p className="text-3xl font-bold text-primary">8</p>
+                                <p className="text-gray-600 text-sm font-medium">Campus Zones</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-dark">-</p>
-                                <p className="text-gray-600 text-sm">Uptime</p>
+                                <p className="text-3xl font-bold text-primary">99.9%</p>
+                                <p className="text-gray-600 text-sm font-medium">Uptime</p>
                             </div>
                         </div>
                     </div>
@@ -69,9 +63,11 @@ export default function Hero() {
                                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
                                     </svg>
                                     <span className="font-semibold text-dark">Main Lot A</span>
-                                    <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded">LIVE</span>
+                                    <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">LIVE</span>
                                 </div>
-                                <p className="text-sm text-gray-600"> - spots currently available</p>
+                                <p className="text-sm text-gray-600">
+                                    <span className="font-bold text-primary">142</span> spots currently available
+                                </p>
                             </div>
                         </div>
                     </div>
