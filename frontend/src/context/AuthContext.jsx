@@ -15,15 +15,17 @@ export function AuthProvider({ children }) {
             // Mock API call - replace with real API when backend is ready
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
+            const isTestDriverLogin = email === '12345' && password === '12345678';
+
             // Mock validation
-            if (email && password) {
+            if (isTestDriverLogin || (email && password)) {
                 const userData = {
                     id: Math.random().toString(36).substr(2, 9),
                     email,
-                    role: selectedRole,
+                    role: isTestDriverLogin ? 'driver' : selectedRole,
                 };
                 setUser(userData);
-                setRole(selectedRole);
+                setRole(isTestDriverLogin ? 'driver' : selectedRole);
                 return userData;
             } else {
                 throw new Error('Invalid credentials');

@@ -89,10 +89,10 @@ export default function LoginPage() {
                             Email or ID
                         </label>
                         <input
-                            type="email"
+                            type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="your@email.com"
+                            placeholder="12345 or your@email.com"
                             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                             disabled={isLoading}
                         />
@@ -125,6 +125,9 @@ export default function LoginPage() {
 
                 {/* Footer Links */}
                 <div className="mt-6 space-y-2 text-center text-sm">
+                    <p className="text-gray-500">
+                        Test login: <span className="font-medium text-gray-700">12345 / 12345678</span>
+                    </p>
                     <p>
                         <a href="#forgot" className="text-primary hover:text-blue-700">
                             Forgot password?
@@ -132,9 +135,9 @@ export default function LoginPage() {
                     </p>
                     <p className="text-gray-600">
                         New to UniPark?{' '}
-                        <a href="#register" className="text-primary hover:text-blue-700 font-medium">
+                        <Link to="/signup" className="text-primary hover:text-blue-700 font-medium">
                             Register as Driver
-                        </a>
+                        </Link>
                     </p>
                 </div>
             </div>

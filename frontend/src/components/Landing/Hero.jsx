@@ -34,15 +34,15 @@ export default function Hero() {
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
                             <div>
-                                <p className="text-3xl font-bold text-primary">1,420+</p>
+                                <p className="text-3xl font-bold text-primary">-</p>
                                 <p className="text-gray-600 text-sm font-medium">Active Spots</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-primary">8</p>
+                                <p className="text-3xl font-bold text-primary">-</p>
                                 <p className="text-gray-600 text-sm font-medium">Campus Zones</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-primary">99.9%</p>
+                                <p className="text-3xl font-bold text-primary">-</p>
                                 <p className="text-gray-600 text-sm font-medium">Uptime</p>
                             </div>
                         </div>
@@ -66,7 +66,7 @@ export default function Hero() {
                                     <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">LIVE</span>
                                 </div>
                                 <p className="text-sm text-gray-600">
-                                    <span className="font-bold text-primary">142</span> spots currently available
+                                    <span className="font-bold text-primary">-</span> spots currently available
                                 </p>
                             </div>
                         </div>
