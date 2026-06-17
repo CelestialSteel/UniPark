@@ -1,17 +1,17 @@
 export default function Features() {
     const features = [
         {
-            icon: '📡',
+            icon: '',
             title: 'Real-time Telemetry',
             description: 'Live occupancy data refreshed every 15 seconds across all monitored parking structures',
         },
         {
-            icon: '🛡️',
+            icon: '',
             title: 'Security Dashboard',
             description: 'Advanced monitoring tools for security personnel to manage permits and zone violations',
         },
         {
-            icon: '📊',
+            icon: '',
             title: 'Usage Analytics',
             description: 'Historical data analysis to help university planners optimize future campus infrastructure',
         },

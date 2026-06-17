@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ASSETS } from '../../constants/assets';
 
 export default function Hero() {
     return (
@@ -8,12 +9,7 @@ export default function Hero() {
                     {/* Left Content */}
                     <div className="space-y-8">
                         {/* Badge */}
-                        <div className="inline-flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full">
-                            <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                            </svg>
-                            <span className="text-sm font-semibold text-primary">OFFICIAL UNIVERSITY INFRASTRUCTURE</span>
-                        </div>
+                        
 
                         {/* Heading */}
                         <div className="space-y-4">
@@ -44,15 +40,15 @@ export default function Hero() {
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
                             <div>
-                                <p className="text-3xl font-bold text-dark">2,500+</p>
+                                <p className="text-3xl font-bold text-dark">-</p>
                                 <p className="text-gray-600 text-sm">Active Spots</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-dark">12</p>
+                                <p className="text-3xl font-bold text-dark">-</p>
                                 <p className="text-gray-600 text-sm">Campus Zones</p>
                             </div>
                             <div>
-                                <p className="text-3xl font-bold text-dark">99.9%</p>
+                                <p className="text-3xl font-bold text-dark">-</p>
                                 <p className="text-gray-600 text-sm">Uptime</p>
                             </div>
                         </div>
@@ -62,7 +58,7 @@ export default function Hero() {
                     <div className="relative">
                         <div className="rounded-2xl overflow-hidden shadow-2xl">
                             <img
-                                src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&h=500&fit=crop"
+                                src={ASSETS.parkingLot}
                                 alt="Parking lot with available spaces"
                                 className="w-full h-96 object-cover"
                             />
@@ -75,7 +71,7 @@ export default function Hero() {
                                     <span className="font-semibold text-dark">Main Lot A</span>
                                     <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded">LIVE</span>
                                 </div>
-                                <p className="text-sm text-gray-600">47 spots currently available</p>
+                                <p className="text-sm text-gray-600"> - spots currently available</p>
                             </div>
                         </div>
                     </div>
