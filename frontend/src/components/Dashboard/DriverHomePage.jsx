@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 
 const recentActivities = [
-    { zone: 'Engineering South', date: 'Oct 22, 2023', duration: '04:22:00', status: 'COMPLETED' },
-    { zone: 'Library West', date: 'Oct 21, 2023', duration: '02:15:00', status: 'COMPLETED' },
-    { zone: 'Student Union', date: 'Oct 19, 2023', duration: '00:45:00', status: 'EXPIRED' },
+    { zone: 'Engineering Lab ', date: 'Jun 15, 2025', duration: '04:22:00', status: 'COMPLETED' },
+    { zone: 'Library West', date: 'Jun 15, 2025', duration: '02:15:00', status: 'COMPLETED' },
+    { zone: 'Student Union', date: 'Jun 10, 2025', duration: '00:45:00', status: 'EXPIRED' },
 ];
 
 function SidebarItem({ label, active = false, icon }) {
@@ -76,7 +76,7 @@ export default function DriverHomePage() {
 
                             <div className="flex items-center gap-3 rounded-full bg-transparent px-2 py-1 text-right">
                                 <div className="text-sm">
-                                    <p className="text-slate-700">Monday, Oct 24</p>
+                                    <p className="text-slate-700">Monday, Jun 17</p>
                                     <p className="text-blue-700">01:27:15</p>
                                 </div>
                                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-200 text-slate-700">
@@ -90,7 +90,7 @@ export default function DriverHomePage() {
                                 <div className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-blue-700">
                                     <span className="h-2 w-2 rounded-full bg-blue-700" /> Current Session
                                 </div>
-                                <h2 className="text-2xl font-medium text-slate-900">Zone B-42: Central Annex</h2>
+                                <h2 className="text-2xl font-medium text-slate-900">Zone B-42: Library Lot</h2>
 
                                 <div className="mt-6 grid gap-4 md:grid-cols-[repeat(3,minmax(0,1fr))_auto] md:items-center">
                                     <StatBox label="Vehicle" value="ABC-1234 (Tesla M3)" />
