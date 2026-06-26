@@ -68,20 +68,46 @@ export default function LoginPage() {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Role Selection */}
-                    {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            I am a:
+                    <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                            Select Portal Role
                         </label>
-                        <select
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                            <option value="driver">Driver (Student/Staff)</option>
-                            <option value="guard">Security Guard</option>
-                            <option value="admin">Administrator</option>
-                        </select>
-                    </div> */}
+                        <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg">
+                            <button
+                                type="button"
+                                onClick={() => { setRole('driver'); setEmail('12345'); setPassword('12345678'); }}
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
+                                    role === 'driver'
+                                        ? 'bg-white text-blue-700 shadow-xs'
+                                        : 'text-gray-600 hover:text-slate-900'
+                                }`}
+                            >
+                                Driver
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setRole('guard'); setEmail('guard@unipark.ac.ke'); setPassword('guard123'); }}
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
+                                    role === 'guard'
+                                        ? 'bg-white text-blue-700 shadow-xs'
+                                        : 'text-gray-600 hover:text-slate-900'
+                                }`}
+                            >
+                                Security
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setRole('admin'); setEmail('admin@unipark.ac.ke'); setPassword('admin123'); }}
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
+                                    role === 'admin'
+                                        ? 'bg-white text-blue-700 shadow-xs'
+                                        : 'text-gray-600 hover:text-slate-900'
+                                }`}
+                            >
+                                Admin
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Email Input */}
                     <div>
@@ -117,7 +143,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-transparent text-black border border-black py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-transparent text-black border border-black py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLoading ? 'Signing in...' : 'Sign In'}
                     </button>
@@ -125,8 +151,8 @@ export default function LoginPage() {
 
                 {/* Footer Links */}
                 <div className="mt-6 space-y-2 text-center text-sm">
-                    <p className="text-gray-500">
-                        Test login: <span className="font-medium text-gray-700">12345 / 12345678</span>
+                    <p className="text-gray-500 text-xs">
+                        Tip: Click any role tab above to pre-fill test credentials.
                     </p>
                     <p>
                         <a href="#forgot" className="text-primary hover:text-blue-700">
