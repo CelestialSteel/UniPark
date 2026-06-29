@@ -1,6 +1,7 @@
 import Header from '../Common/Header';
 import Footer from '../Common/Footer';
 import Hero from './Hero';
+import About from './About';
 import Features from './Features';
 import CallToAction from './CallToAction';
 import Contact from './Contact';
@@ -11,6 +12,7 @@ export default function LandingPage() {
             <Header />
             <main>
                 <Hero />
+                <About />
                 <Features />
                 <CallToAction />
                 <Contact />
