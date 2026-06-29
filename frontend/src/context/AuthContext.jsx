@@ -23,6 +23,10 @@ export function AuthProvider({ children }) {
                     id: Math.random().toString(36).substr(2, 9),
                     email,
                     role: isTestDriverLogin ? 'driver' : selectedRole,
+                    name: isTestDriverLogin ? 'Dalton Muindi' : 'Admin Administrator',
+                    phone: isTestDriverLogin ? '+254 712 345678' : '+254 722 987654',
+                    department: isTestDriverLogin ? 'Faculty of IT' : 'Security Command Centre',
+                    image: '',
                 };
                 setUser(userData);
                 setRole(isTestDriverLogin ? 'driver' : selectedRole);
@@ -44,6 +48,10 @@ export function AuthProvider({ children }) {
         setError(null);
     };
 
+    const updateProfile = (profileData) => {
+        setUser((prev) => (prev ? { ...prev, ...profileData } : null));
+    };
+
     const value = {
         user,
         role,
@@ -51,6 +59,7 @@ export function AuthProvider({ children }) {
         error,
         login,
         logout,
+        updateProfile,
         isAuthenticated: !!user,
     };
 
