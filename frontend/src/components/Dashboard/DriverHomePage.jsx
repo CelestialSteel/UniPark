@@ -1,23 +1,12 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Sidebar from './Sidebar';
 
 const recentActivities = [
     { zone: 'Engineering Lab ', date: 'Jun 15, 2025', duration: '04:22:00', status: 'COMPLETED' },
     { zone: 'Library West', date: 'Jun 15, 2025', duration: '02:15:00', status: 'COMPLETED' },
     { zone: 'Student Union', date: 'Jun 10, 2025', duration: '00:45:00', status: 'EXPIRED' },
 ];
-
-function SidebarItem({ label, active = false, icon }) {
-    return (
-        <button
-            type="button"
-            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${active ? 'bg-blue-100 text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-        >
-            <span className="flex h-5 w-5 items-center justify-center text-blue-700">{icon}</span>
-            <span>{label}</span>
-        </button>
-    );
-}
 
 function StatBox({ label, value }) {
     return (
@@ -28,43 +17,33 @@ function StatBox({ label, value }) {
     );
 }
 
+function formatClock(date) {
+    return new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+    }).format(date);
+}
+
 export default function DriverHomePage() {
+    const [currentTime, setCurrentTime] = useState(() => new Date());
+
+    useEffect(() => {
+        const timerId = window.setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        return () => window.clearInterval(timerId);
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#f4f7fb] text-slate-900">
             <div className="flex min-h-screen">
-                <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-5 py-6 lg:flex">
-                    <div className="mb-10 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-2xl font-bold text-blue-700">P</div>
-                        <span className="text-2xl font-semibold text-blue-700">UniPark</span>
-                    </div>
-
-                    <nav className="space-y-2">
-                        <SidebarItem
-                            label="Home"
-                            active
-                            icon={<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1h-5.5a1 1 0 01-1-1v-6.5h-4V21a1 1 0 01-1 1H4a1 1 0 01-1-1v-10.5z" /></svg>}
-                        />
-                        <SidebarItem
-                            label="Zones"
-                            icon={<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2" /><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" /></svg>}
-                        />
-                        <SidebarItem
-                            label="Logs"
-                            icon={<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M8 15h5" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>}
-                        />
-                        <SidebarItem
-                            label="Profile"
-                            icon={<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 12a4 4 0 100-8 4 4 0 000 8z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 20a8 8 0 0116 0" /></svg>}
-                        />
-                    </nav>
-
-                    <div className="mt-auto border-t border-slate-200 pt-6">
-                        <Link to="/login" className="flex items-center gap-3 text-sm font-medium text-red-600 hover:text-red-700">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 17l5-5-5-5M15 12H3m11 9h7a2 2 0 002-2V5a2 2 0 00-2-2h-7" /></svg>
-                            Sign Out
-                        </Link>
-                    </div>
-                </aside>
+                <Sidebar activePage="home" />
 
                 <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
                     <div className="mx-auto max-w-6xl">
@@ -76,12 +55,16 @@ export default function DriverHomePage() {
 
                             <div className="flex items-center gap-3 rounded-full bg-transparent px-2 py-1 text-right">
                                 <div className="text-sm">
-                                    <p className="text-slate-700">Monday, Jun 17</p>
-                                    <p className="text-blue-700">01:27:15</p>
+                                    <p className="text-slate-700">{formatClock(currentTime).split(', ').slice(0, 2).join(', ')}</p>
+                                    <p className="text-blue-700">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
                                 </div>
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-200 text-slate-700">
+                                <Link 
+                                    to="/dashboard/driver/profile" 
+                                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-200 text-slate-700 hover:bg-slate-300 transition duration-150 ease-in-out cursor-pointer"
+                                    aria-label="View Profile"
+                                >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="8" r="4" fill="none" strokeWidth="2" /></svg>
-                                </div>
+                                </Link>
                             </div>
                         </header>
 
