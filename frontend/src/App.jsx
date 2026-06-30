@@ -3,9 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import LandingPage from './components/Landing/LandingPage';
 import LoginPage from './components/Auth/LoginPage';
 import SignupPage from './components/Auth/SignupPage';
-import DriverHomePage from './components/Dashboard/DriverHomePage';
-import DriverProfilePage from './components/Dashboard/DriverProfilePage';
-import DriverLogsPage from './components/Dashboard/DriverLogsPage';
+import DriverDashboard from './components/Dashboard/DriverDashboard';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
 import SecurityDashboard from './components/Dashboard/SecurityDashboard';
 import './index.css';
@@ -18,9 +16,9 @@ function App() {
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
-                    <Route path="/dashboard/driver" element={<DriverHomePage />} />
-                    <Route path="/dashboard/driver/profile" element={<DriverProfilePage />} />
-                    <Route path="/dashboard/driver/logs" element={<DriverLogsPage />} />
+                    <Route path="/dashboard/driver" element={<DriverDashboard defaultTab="home" />} />
+                    <Route path="/dashboard/driver/profile" element={<DriverDashboard defaultTab="profile" />} />
+                    <Route path="/dashboard/driver/logs" element={<DriverDashboard defaultTab="logs" />} />
                     <Route path="/dashboard/admin" element={<AdminDashboard />} />
                     <Route path="/dashboard/guard" element={<SecurityDashboard />} />
                     {/* Dashboard routes will be added later */}
