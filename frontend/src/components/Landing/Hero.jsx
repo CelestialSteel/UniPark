@@ -9,7 +9,7 @@ export default function Hero() {
                     {/* Left Content */}
                     <div className="space-y-8">
                         {/* Badge */}
-                        
+
 
                         {/* Heading */}
                         <div className="space-y-4">
@@ -32,7 +32,7 @@ export default function Hero() {
                         </div>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
+                        {/* <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
                             <div>
                                 <p className="text-3xl font-bold text-primary">-</p>
                                 <p className="text-gray-600 text-sm font-medium">Active Spots</p>
@@ -45,7 +45,7 @@ export default function Hero() {
                                 <p className="text-3xl font-bold text-primary">-</p>
                                 <p className="text-gray-600 text-sm font-medium">Uptime</p>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* Right Image */}
@@ -62,7 +62,7 @@ export default function Hero() {
                                     <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
                                     </svg>
-                                    <span className="font-semibold text-dark">Main Lot A</span>
+                                    <span className="font-semibold text-dark">Phase 1</span>
                                     <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">LIVE</span>
                                 </div>
                                 <p className="text-sm text-gray-600">

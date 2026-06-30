@@ -14,7 +14,7 @@ export default function CallToAction() {
                     to="/login"
                     className="inline-block bg-white text-slate-900 px-8 py-3 rounded-md border border-white/20 hover:bg-slate-100 transition font-bold text-lg shadow-lg"
                 >
-                    Enter Student Portal
+                    Get Started
                 </Link>
             </div>
         </section>
