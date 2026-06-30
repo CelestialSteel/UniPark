@@ -12,6 +12,7 @@ import AnnouncementsTab from './Admin/AnnouncementsTab';
 import LookupTab from './Admin/LookupTab';
 import AnalyticsTab from './Admin/AnalyticsTab';
 import ProfileTab from './Admin/ProfileTab';
+import GuardManagementPage from './Admin/GuardManagementPage';
 
 // --- MOCK SEED DATA ---
 const INITIAL_ZONES = [
@@ -62,6 +63,10 @@ const NAV_ITEMS = [
         icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
     },
     {
+        id: 'security-guards', label: 'Security Guards',
+        icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+    },
+    {
         id: 'logs', label: 'Vehicle Audit Logs',
         icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
     },
@@ -81,6 +86,7 @@ const NAV_ITEMS = [
         id: 'analytics', label: 'Analytics & Reports',
         icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     },
+
 ];
 
 export default function AdminDashboard() {
@@ -156,6 +162,12 @@ export default function AdminDashboard() {
         triggerToast('Event parking reservation successful.');
     };
 
+    const handleUpdateGuard = (guardData) => {
+        // Add logic here to update the guard data
+        console.log(guardData);
+        triggerToast('Guard details updated successfully.');
+    };
+
     const handleCreateAnnouncement = (annData) => {
         const announcement = {
             id: `ann-${Date.now()}`,
@@ -178,7 +190,7 @@ export default function AdminDashboard() {
             {/* Top Bar / Header */}
             <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
+                    <div className="UniPark-Logo" style={{ backgroundColor: "#1e40af", padding: "8px", borderRadius: "12px", height: "36px", width: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <img src={ASSETS.logo} alt="UniPark Logo" className="h-6 w-auto" />
                     </div>
                     <div>
@@ -335,6 +347,9 @@ export default function AdminDashboard() {
                             setZones={setZones}
                             triggerToast={triggerToast}
                         />
+                    )}
+                    {activeTab === 'security-guards' && (
+                        <GuardManagementPage />
                     )}
 
                     {activeTab === 'logs' && (
