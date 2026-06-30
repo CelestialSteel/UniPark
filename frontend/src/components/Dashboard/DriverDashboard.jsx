@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { ASSETS } from '../../constants/assets';
 
 // Tabs
 import DriverHomeTab from './Driver/DriverHomeTab';
@@ -65,9 +66,10 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
             {/* Top Bar / Header */}
             <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-700 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
-                        P
-                    </div>
+                     <div className="UniPark-Logo" style={{ backgroundColor: "#1e40af", padding: "8px", borderRadius: "12px", height: "36px", width: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src={ASSETS.logo} alt="UniPark Logo" className="h-6 w-auto" />
+                     </div>
+            
                     <div>
                         <span className="text-xl font-bold text-blue-700">UniPark</span>
                         <span className="ml-2 hidden sm:inline text-xs py-0.5 px-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200 font-medium">
