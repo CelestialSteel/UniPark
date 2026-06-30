@@ -8,6 +8,7 @@ export default function OverviewTab({ zones, metrics, handleCordonZoneToggle, on
     const [newRes, setNewRes] = useState({ zone: zones[0]?.name || 'Phase 1 Lot', event: '', date: '', spaces: 5 });
     const [newAnn, setNewAnn] = useState({ title: '', message: '', severity: 'low' });
 
+
     const handleResSubmit = (e) => {
         e.preventDefault();
         onAddReservation(newRes);
@@ -41,7 +42,7 @@ export default function OverviewTab({ zones, metrics, handleCordonZoneToggle, on
                         onClick={() => setIsAnnModalOpen(true)}
                         className="inline-flex items-center gap-2 rounded-lg bg-gray-100 hover:bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-800 border border-gray-300 cursor-pointer"
                     >
-                        📢 Publish Announcement
+                         Publish Announcement
                     </button>
                 </div>
             </div>
@@ -143,7 +144,7 @@ export default function OverviewTab({ zones, metrics, handleCordonZoneToggle, on
                                         : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
                                         }`}
                                 >
-                                    {zone.cordoned > 0 ? '🔓 Release Spaces' : '🔒 Cordon Spot (10)'}
+                                    {zone.cordoned > 0 ? ' Release Spaces' : ' Cordon Spot (10)'}
                                 </button>
                                 <button
                                     onClick={() => {
