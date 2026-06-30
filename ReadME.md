@@ -54,7 +54,7 @@ UniPark addresses all of these gaps through a software-only solution that integr
 | Layer | Technology |
 |---|---|
 | Frontend | React.js (JavaScript) |
-| Backend | Python + Django (REST API, MVT architecture) |
+| Backend | Python + FastAPI (REST API) |
 | Database | PostgreSQL |
 | Version Control | GitHub |
 | API Testing | Postman |

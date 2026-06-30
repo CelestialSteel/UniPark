@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { register, isLoading, error } = useAuth();
   const [role, setRole] = useState('driver');
   const [email, setEmail] = useState('');
   const [studentOrLecturerId, setStudentOrLecturerId] = useState('');
@@ -14,7 +16,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState('');
   const [localError, setLocalError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError('');
 
@@ -36,7 +38,12 @@ export default function SignupPage() {
       return;
     }
 
-    navigate('/login');
+    try {
+      await register({ fullName, email, password, phoneNumber, studentOrLecturerId, isLecturer });
+      navigate('/login');
+    } catch (err) {
+      setLocalError(err.message || 'Registration failed');
+    }
   };
 
   return (
@@ -59,9 +66,9 @@ export default function SignupPage() {
           <p className="text-gray-600 mt-2">Create your account</p>
         </div>
 
-        {localError && (
+        {(localError || error) && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-            {localError}
+            {localError || error}
           </div>
         )}
 
@@ -74,6 +81,7 @@ export default function SignupPage() {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isLoading}
             />
           </div>
 
@@ -85,6 +93,7 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isLoading}
             />
           </div>
 
@@ -98,6 +107,7 @@ export default function SignupPage() {
               onChange={(e) => setStudentOrLecturerId(e.target.value)}
               placeholder="Enter your ID number"
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isLoading}
             />
           </div>
 
@@ -107,6 +117,7 @@ export default function SignupPage() {
               checked={isLecturer}
               onChange={(e) => setIsLecturer(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              disabled={isLoading}
             />
             I am a lecturer
           </label>
@@ -119,6 +130,7 @@ export default function SignupPage() {
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+27 000 000 000"
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isLoading}
             />
           </div>
 
@@ -131,6 +143,7 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={isLoading}
               />
             </div>
 
@@ -142,15 +155,17 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={isLoading}
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-transparent text-black border border-black py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium"
+            disabled={isLoading}
+            className="w-full bg-transparent text-black border border-black py-2 rounded-md hover:border-blue-700 hover:bg-blue-700 hover:text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign Up
+            {isLoading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
 

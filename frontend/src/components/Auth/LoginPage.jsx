@@ -21,9 +21,9 @@ export default function LoginPage() {
         }
 
         try {
-            await login(email, password, role);
+            const loggedInUser = await login(email, password, role);
             // Redirect based on role
-            switch (role) {
+            switch (loggedInUser.role) {
                 case 'driver':
                     navigate('/dashboard/driver');
                     break;

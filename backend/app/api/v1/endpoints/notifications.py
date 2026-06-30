@@ -1,0 +1,161 @@
+"""Notifications Endpoints"""
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.schemas import NotificationResponse
+from app.models import Notification, User
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+@router.get("", response_model=list[NotificationResponse])
+async def list_notifications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    unread_only: bool = False,
+    skip: int = 0,
+    limit: int = 10
+):
+    """Get user notifications"""
+    
+    query = db.query(Notification).filter(
+        Notification.recipient_user_id == current_user.id
+    )
+    
+    if unread_only:
+        query = query.filter(Notification.is_read == False)
+    
+    notifications = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return notifications
+
+
+@router.get("/unread-count", response_model=dict)
+async def get_unread_count(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get unread notification count"""
+    
+    count = db.query(Notification).filter(
+        Notification.recipient_user_id == current_user.id,
+        Notification.is_read == False
+    ).count()
+    
+    return {"unread_count": count}
+
+
+@router.get("/{notification_id}", response_model=NotificationResponse)
+async def get_notification(
+    notification_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get notification details"""
+    
+    notification = db.query(Notification).filter(Notification.id == notification_id).first()
+    
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+    
+    # Verify user owns this notification
+    if notification.recipient_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to view this notification"
+        )
+    
+    return notification
+
+
+@router.post("/{notification_id}/mark-as-read", status_code=status.HTTP_200_OK)
+async def mark_as_read(
+    notification_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark notification as read"""
+    
+    notification = db.query(Notification).filter(Notification.id == notification_id).first()
+    
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+    
+    # Verify user owns this notification
+    if notification.recipient_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to modify this notification"
+        )
+    
+    notification.is_read = True
+    notification.read_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(notification)
+    
+    logger.info(f"Notification marked as read: {notification_id}")
+    
+    return {"message": "Notification marked as read"}
+
+
+@router.post("/mark-all-as-read", status_code=status.HTTP_200_OK)
+async def mark_all_as_read(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark all notifications as read"""
+    
+    notifications = db.query(Notification).filter(
+        Notification.recipient_user_id == current_user.id,
+        Notification.is_read == False
+    ).all()
+    
+    for notification in notifications:
+        notification.is_read = True
+        notification.read_at = datetime.utcnow()
+    
+    db.commit()
+    
+    logger.info(f"All notifications marked as read for user: {current_user.id}")
+    
+    return {"message": f"Marked {len(notifications)} notifications as read"}
+
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notification(
+    notification_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete notification"""
+    
+    notification = db.query(Notification).filter(Notification.id == notification_id).first()
+    
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+    
+    # Verify user owns this notification
+    if notification.recipient_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to delete this notification"
+        )
+    
+    db.delete(notification)
+    db.commit()
+    
+    logger.info(f"Notification deleted: {notification_id}")

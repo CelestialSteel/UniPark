@@ -51,7 +51,7 @@ export default function LogsTab({ logs }) {
                         className="w-full bg-gray-100 border border-gray-200 text-gray-900 pl-4 pr-10 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                     />
                     <span className="absolute right-3.5 top-3.5 text-gray-400">
-                        🔍
+
                     </span>
                 </div>
                 <select
