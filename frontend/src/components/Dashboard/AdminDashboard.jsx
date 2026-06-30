@@ -190,7 +190,7 @@ export default function AdminDashboard() {
             {/* Top Bar / Header */}
             <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
-                    <div className="UniPark-Logo" style={{ backgroundColor: "#1e40af", padding: "8px", borderRadius: "12px", height: "36px", width: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div className="UniPark-Logo">
                         <img src={ASSETS.logo} alt="UniPark Logo" className="h-6 w-auto" />
                     </div>
                     <div>

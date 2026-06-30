@@ -66,10 +66,10 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
             {/* Top Bar / Header */}
             <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
-                     <div className="UniPark-Logo" style={{ backgroundColor: "#1e40af", padding: "8px", borderRadius: "12px", height: "36px", width: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div className="UniPark-Logo">
                         <img src={ASSETS.logo} alt="UniPark Logo" className="h-6 w-auto" />
-                     </div>
-            
+                    </div>
+
                     <div>
                         <span className="text-xl font-bold text-blue-700">UniPark</span>
                         <span className="ml-2 hidden sm:inline text-xs py-0.5 px-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200 font-medium">
@@ -80,9 +80,9 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
 
                 <div className="flex items-center gap-4">
                     {/* Notification Bell */}
-                    <button 
+                    <button
                         onClick={() => alert('Notifications: You have no unread parking alerts.')}
-                        type="button" 
+                        type="button"
                         className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:text-gray-700 transition hover:bg-slate-100 cursor-pointer"
                         title="Notifications"
                     >
@@ -166,11 +166,10 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
-                            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer ${
-                                activeTab === item.id
+                            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer ${activeTab === item.id
                                     ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
                                     : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
-                            }`}
+                                }`}
                         >
                             <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={item.icon} />
@@ -186,8 +185,8 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                             <p className="mt-1 text-[11px] text-slate-500 leading-normal">
                                 Facing issues with a zone? Contact security.
                             </p>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={() => alert('Support ticket raised. Security patrol officer notified.')}
                                 className="mt-3 w-full bg-white border border-slate-200 text-slate-700 rounded-lg py-2 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer shadow-xs"
                             >
@@ -197,11 +196,10 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
 
                         <button
                             onClick={() => setActiveTab('profile')}
-                            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer mb-1 ${
-                                activeTab === 'profile'
+                            className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer mb-1 ${activeTab === 'profile'
                                     ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
                                     : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
-                            }`}
+                                }`}
                         >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

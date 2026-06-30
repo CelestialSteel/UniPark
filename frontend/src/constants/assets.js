@@ -1,5 +1,5 @@
 import ParkingLotImage from '../assets/Parking_lot.png';
-import LogoImage from '../assets/logo.png';
+import LogoImage from '../assets/logo.svg';
 import CampusMapImage from '../assets/campus_map.png';
 
 export const ASSETS = {
