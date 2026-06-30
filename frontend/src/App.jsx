@@ -7,6 +7,7 @@ import DriverHomePage from './components/Dashboard/DriverHomePage';
 import DriverProfilePage from './components/Dashboard/DriverProfilePage';
 import DriverLogsPage from './components/Dashboard/DriverLogsPage';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
+import SecurityDashboard from './components/Dashboard/SecurityDashboard';
 import './index.css';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
                     <Route path="/dashboard/driver/profile" element={<DriverProfilePage />} />
                     <Route path="/dashboard/driver/logs" element={<DriverLogsPage />} />
                     <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                    <Route path="/dashboard/guard" element={<SecurityDashboard />} />
                     {/* Dashboard routes will be added later */}
                 </Routes>
             </AuthProvider>
