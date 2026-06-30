@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [registrationMode, setRegistrationMode] = useState('registered'); // 'visitor' | 'registered'
     const [form, setForm] = useState({
         plate: '',
         name: '',
@@ -17,13 +18,32 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleModeSwitch = (mode) => {
+        setRegistrationMode(mode);
+        setForm({
+            plate: '',
+            name: '',
+            email: '',
+            idNumber: '',
+            phone: '',
+            department: 'Faculty of IT',
+            role: 'Student',
+        });
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Simple validations
-        if (!form.plate || !form.name || !form.phone) {
-            alert('Please fill in all required fields (Plate, Driver Name, and Phone Number)');
-            return;
+
+        if (registrationMode === 'registered') {
+            if (!form.plate || !form.idNumber) {
+                alert('Please fill in both the License Plate and Admission Number.');
+                return;
+            }
+        } else {
+            if (!form.plate || !form.name || !form.phone) {
+                alert('Please fill in all required fields (Plate, Driver Name, and Phone Number)');
+                return;
+            }
         }
 
         const success = onRegister({
@@ -35,7 +55,6 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
         });
 
         if (success) {
-            // Reset form
             setForm({
                 plate: '',
                 name: '',
@@ -49,7 +68,7 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
     };
 
     // Filter registered drivers
-    const filteredDrivers = registeredDrivers.filter(driver => 
+    const filteredDrivers = registeredDrivers.filter(driver =>
         driver.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
         driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         driver.role.toLowerCase().includes(searchQuery.toLowerCase())
@@ -73,8 +92,33 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
                         Registration Form
                     </h2>
 
+                    {/* Mode Toggle */}
+                    <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-5">
+                        <button
+                            type="button"
+                            onClick={() => handleModeSwitch('registered')}
+                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition cursor-pointer ${registrationMode === 'registered'
+                                ? 'bg-blue-700 text-white'
+                                : 'bg-white text-gray-500 hover:bg-slate-50'
+                                }`}
+                        >
+                            Registered Driver
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleModeSwitch('visitor')}
+                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition cursor-pointer border-l border-gray-200 ${registrationMode === 'visitor'
+                                ? 'bg-blue-700 text-white'
+                                : 'bg-white text-gray-500 hover:bg-slate-50'
+                                }`}
+                        >
+                            Visitor
+                        </button>
+                    </div>
+
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Plate Number */}
+
+                        {/* Plate Number — always shown */}
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
                                 License Plate Number <span className="text-red-500">*</span>
@@ -90,111 +134,84 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
                             />
                         </div>
 
-                        {/* Driver Name */}
+                        {/* Admission / ID Number — always shown */}
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                Driver Full Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={form.name}
-                                onChange={handleChange}
-                                placeholder="E.g., Dalton Muindi"
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                required
-                            />
-                        </div>
-
-                        {/* Phone Number */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                Phone Number <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="phone"
-                                value={form.phone}
-                                onChange={handleChange}
-                                placeholder="E.g., +254 712 345678"
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                required
-                            />
-                        </div>
-
-                        {/* ID Number / Reg Number */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                ID / Student Reg Number
+                                {registrationMode === 'registered' ? (
+                                    <>Admission Number <span className="text-red-500">*</span></>
+                                ) : (
+                                    'ID Number'
+                                )}
                             </label>
                             <input
                                 type="text"
                                 name="idNumber"
                                 value={form.idNumber}
                                 onChange={handleChange}
-                                placeholder="E.g., 184066 or SU-4009"
+                                placeholder={registrationMode === 'registered' ? 'E.g., 184066 or SU-4009' : 'E.g., 184066 or SU-4009'}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                required={registrationMode === 'registered'}
                             />
                         </div>
 
-                        {/* Email Address */}
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                Email Address
-                            </label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={form.email}
-                                onChange={handleChange}
-                                placeholder="E.g., name@strathmore.edu"
-                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            />
-                        </div>
+                        {/* Visitor-only fields */}
+                        {registrationMode === 'visitor' && (
+                            <>
+                                {/* Driver Name */}
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                                        Driver Full Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={form.name}
+                                        onChange={handleChange}
+                                        placeholder="E.g., Dalton Muindi"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        required
+                                    />
+                                </div>
 
-                        {/* Role selection & Department */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                    Driver Role
-                                </label>
-                                <select
-                                    name="role"
-                                    value={form.role}
-                                    onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 bg-white"
-                                >
-                                    <option value="Student">Student</option>
-                                    <option value="Faculty">Faculty</option>
-                                    <option value="Staff">Staff</option>
-                                    <option value="Visitor">Visitor</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                                    Department
-                                </label>
-                                <select
-                                    name="department"
-                                    value={form.department}
-                                    onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 bg-white"
-                                >
-                                    <option value="Faculty of IT">Faculty of IT</option>
-                                    <option value="School of Computing">School of Computing</option>
-                                    <option value="Business School">Business School</option>
-                                    <option value="Finance Office">Finance Office</option>
-                                    <option value="Academic Staff">Academic Staff</option>
-                                    <option value="Guest Visitor">Guest/Visitor</option>
-                                </select>
-                            </div>
-                        </div>
+                                {/* Phone Number */}
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                                        Phone Number <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="phone"
+                                        value={form.phone}
+                                        onChange={handleChange}
+                                        placeholder="E.g., +254 712 345678"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Email Address */}
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={form.email}
+                                        onChange={handleChange}
+                                        placeholder="E.g., name@strathmore.edu"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    />
+                                </div>
+
+                            </>
+                        )}
 
                         <button
                             type="submit"
                             className="w-full bg-blue-700 hover:bg-blue-800 text-white rounded-xl py-3 font-semibold shadow-md shadow-blue-500/15 hover:shadow-lg transition cursor-pointer"
                         >
-                            Submit Registration
+                            {registrationMode === 'registered' ? 'Link Vehicle' : 'Submit Registration'}
                         </button>
                     </form>
                 </div>
@@ -203,7 +220,7 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
                 <div className="lg:col-span-2 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 className="text-xl font-bold text-gray-800">Authorized Directory</h2>
-                        
+
                         {/* Search Input */}
                         <div className="relative w-full sm:w-64">
                             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -260,12 +277,11 @@ export default function RegisterVehicleTab({ registeredDrivers, onRegister }) {
                                                     {driver.department}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                                        driver.role === 'Student' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${driver.role === 'Student' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                                         driver.role === 'Faculty' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                                        driver.role === 'Staff' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                        'bg-slate-100 text-slate-700 border-slate-200'
-                                                    }`}>
+                                                            driver.role === 'Staff' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                                'bg-slate-100 text-slate-700 border-slate-200'
+                                                        }`}>
                                                         {driver.role}
                                                     </span>
                                                 </td>
