@@ -189,6 +189,10 @@ class VehicleLogResponse(BaseModel):
     entry_time: datetime
     exit_time: Optional[datetime] = None
     duration_minutes: Optional[int] = None
+    vehicle_registration: Optional[str] = None
+    driver_name: Optional[str] = None
+    parking_zone_name: Optional[str] = None
+    parking_zone_code: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -227,6 +231,10 @@ class InfringementResponse(BaseModel):
     resolution_notes: Optional[str] = None
     reported_at: datetime
     processed_at: Optional[datetime] = None
+    vehicle_registration: Optional[str] = None
+    driver_name: Optional[str] = None
+    parking_zone_name: Optional[str] = None
+    parking_zone_code: Optional[str] = None
     
     class Config:
         from_attributes = True

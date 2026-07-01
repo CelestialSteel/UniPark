@@ -12,6 +12,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def serialize_infringement(infringement: Infringement) -> dict:
+    """Convert an infringement into the frontend display shape."""
+    return {
+        "id": infringement.id,
+        "vehicle_id": infringement.vehicle_id,
+        "driver_id": infringement.driver_id,
+        "parking_zone_id": infringement.parking_zone_id,
+        "infringement_type": infringement.infringement_type,
+        "description": infringement.description,
+        "severity": infringement.severity,
+        "fine_amount": infringement.fine_amount,
+        "status": infringement.status,
+        "resolution_notes": infringement.resolution_notes,
+        "reported_at": infringement.reported_at,
+        "processed_at": infringement.processed_at,
+        "vehicle_registration": infringement.vehicle.registration_number if infringement.vehicle else None,
+        "driver_name": (
+            f"{infringement.driver.user.first_name} {infringement.driver.user.last_name}".strip()
+            if infringement.driver and infringement.driver.user else None
+        ),
+        "parking_zone_name": infringement.parking_zone.zone_name if infringement.parking_zone else None,
+        "parking_zone_code": infringement.parking_zone.zone_code if infringement.parking_zone else None,
+    }
+
+
 @router.get("", response_model=list[InfringementResponse])
 async def list_infringements(
     current_user: User = Depends(get_current_user),
@@ -35,7 +60,7 @@ async def list_infringements(
         query = query.filter(Infringement.status == status_filter)
     
     infringements = query.order_by(Infringement.reported_at.desc()).offset(skip).limit(limit).all()
-    return infringements
+    return [serialize_infringement(infringement) for infringement in infringements]
 
 
 @router.get("/{infringement_id}", response_model=InfringementResponse)
@@ -64,7 +89,7 @@ async def get_infringement(
                 detail="You don't have permission to view this infringement"
             )
     
-    return infringement
+    return serialize_infringement(infringement)
 
 
 @router.post("", response_model=InfringementResponse, status_code=status.HTTP_201_CREATED)
@@ -113,7 +138,7 @@ async def report_infringement(
     
     logger.info(f"Infringement reported: {infringement.infringement_type} for {vehicle.registration_number}")
     
-    return infringement
+    return serialize_infringement(infringement)
 
 
 @router.patch("/{infringement_id}", response_model=InfringementResponse)
@@ -173,4 +198,4 @@ async def get_vehicle_active_infringements(
         Infringement.status.in_(["reported", "under_review"])
     ).order_by(Infringement.reported_at.desc()).all()
     
-    return infringements
+    return [serialize_infringement(infringement) for infringement in infringements]
