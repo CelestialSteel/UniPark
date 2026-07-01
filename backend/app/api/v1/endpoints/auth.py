@@ -52,7 +52,10 @@ async def register(
     
     # If driver role, create driver profile
     if role == UserRole.DRIVER:
-        driver = Driver(user_id=user.id)
+        driver = Driver(
+            user_id=user.id,
+            license_number=f"PENDING-{user.id}",
+        )
         db.add(driver)
     
     db.commit()

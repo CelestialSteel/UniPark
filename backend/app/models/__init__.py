@@ -9,6 +9,11 @@ import enum
 Base = declarative_base()
 
 
+def enum_values(enum_class):
+    """Store enum values in PostgreSQL instead of Python enum member names."""
+    return [member.value for member in enum_class]
+
+
 class UserRole(str, enum.Enum):
     """User role enumeration"""
     ADMIN = "admin"
@@ -67,7 +72,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.DRIVER)
+    role = Column(Enum(UserRole, values_callable=enum_values), nullable=False, default=UserRole.DRIVER)
     first_name = Column(String(100))
     last_name = Column(String(100))
     phone_number = Column(String(20))
@@ -153,7 +158,7 @@ class ParkingZone(Base):
     reserved_spaces = Column(Integer, default=0)
     cordoned_spaces = Column(Integer, default=0)
     maintenance_spaces = Column(Integer, default=0)
-    status = Column(Enum(ZoneStatus), default=ZoneStatus.ACTIVE)
+    status = Column(Enum(ZoneStatus, values_callable=enum_values), default=ZoneStatus.ACTIVE)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -178,7 +183,7 @@ class ParkingSpace(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id", ondelete="CASCADE"))
     space_number = Column(String(20), nullable=False)
-    status = Column(Enum(ParkingSpaceStatus), default=ParkingSpaceStatus.AVAILABLE)
+    status = Column(Enum(ParkingSpaceStatus, values_callable=enum_values), default=ParkingSpaceStatus.AVAILABLE)
     reserved_for_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     currently_occupied_by_vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
     cordoned_reason = Column(Text)
@@ -204,7 +209,7 @@ class VehicleLog(Base):
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
     parking_space_id = Column(UUID(as_uuid=True), ForeignKey("parking_spaces.id"), nullable=True)
     parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
-    status = Column(Enum(VehicleEntryStatus), default=VehicleEntryStatus.ENTERED)
+    status = Column(Enum(VehicleEntryStatus, values_callable=enum_values), default=VehicleEntryStatus.ENTERED)
     entry_time = Column(DateTime, nullable=False)
     exit_time = Column(DateTime, nullable=True)
     duration_minutes = Column(Integer, nullable=True)
@@ -259,7 +264,7 @@ class Infringement(Base):
     description = Column(Text)
     severity = Column(String(20))  # minor, major, critical
     fine_amount = Column(Float, default=0.0)
-    status = Column(Enum(InfringementStatus), default=InfringementStatus.REPORTED)
+    status = Column(Enum(InfringementStatus, values_callable=enum_values), default=InfringementStatus.REPORTED)
     resolution_notes = Column(Text)
     reported_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     processed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -282,7 +287,7 @@ class Notification(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     recipient_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    notification_type = Column(Enum(NotificationType), default=NotificationType.SYSTEM)
+    notification_type = Column(Enum(NotificationType, values_callable=enum_values), default=NotificationType.SYSTEM)
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)

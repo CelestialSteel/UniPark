@@ -1,6 +1,7 @@
 """FastAPI Application Entry Point"""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.core.config import get_settings
@@ -86,10 +87,13 @@ async def root():
 async def general_exception_handler(request, exc):
     """General exception handler"""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return {
-        "error": "Internal server error",
-        "detail": str(exc) if settings.DEBUG else "Internal server error"
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc) if settings.DEBUG else "Internal server error"
+        },
+    )
 
 
 if __name__ == "__main__":
