@@ -148,6 +148,310 @@ export function printLogsPDF(logs) {
     printWindow.document.close();
 }
 
+export function printOverstayPDF(overstayLogs) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const overstayHTML = overstayLogs.map((log, i) => `
+        <tr style="border-bottom: 1px solid #E5E7EB;">
+            <td style="padding: 10px; text-align: left;">${i + 1}</td>
+            <td style="padding: 10px; text-align: left; font-family: monospace; font-weight: bold;">${log.plate}</td>
+            <td style="padding: 10px; text-align: left;">${log.driver}</td>
+            <td style="padding: 10px; text-align: left;">${log.zone}</td>
+            <td style="padding: 10px; text-align: left; font-size: 12px; color: #4B5563;">${log.entry}</td>
+            <td style="padding: 10px; text-align: left;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background-color: #FEF3C7; color: #B45309;">
+                    ${log.duration || 'Extended'}
+                </span>
+            </td>
+            <td style="padding: 10px; text-align: left;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background-color: #DBEAFE; color: #1D4ED8;">
+                    Overstay Alert
+                </span>
+            </td>
+        </tr>
+    `).join('');
+
+    const pageContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>UniPark - Overstay Alerts Report</title>
+            <style>
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    color: #1F2937;
+                    margin: 40px;
+                    line-height: 1.5;
+                }
+                .header {
+                    border-bottom: 2px solid #0066CC;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .logo-section {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .title-main {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #0066CC;
+                    margin: 0;
+                }
+                .title-sub {
+                    font-size: 14px;
+                    color: #4B5563;
+                    margin: 5px 0 0 0;
+                }
+                .meta-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10px;
+                    margin-bottom: 30px;
+                    font-size: 12px;
+                    background-color: #F9FAFB;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 1px solid #E5E7EB;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                th {
+                    background-color: #B45309;
+                    color: white;
+                    padding: 12px 10px;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                td {
+                    font-size: 13px;
+                    border-bottom: 1px solid #E5E7EB;
+                }
+                .footer {
+                    margin-top: 50px;
+                    border-top: 1px solid #E5E7EB;
+                    padding-top: 15px;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #9CA3AF;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="logo-section">
+                    <div>
+                        <h1 class="title-main">UniPark Strathmore</h1>
+                        <p class="title-sub">Strathmore University Parking Management Portal</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-weight: bold; color: #374151; font-size: 14px;">OVERSTAY ALERTS REPORT</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="meta-grid">
+                <div><strong>Report Type:</strong> Overstay vehicles exceeding the selected threshold</div>
+                <div><strong>Date Generated:</strong> ${new Date().toLocaleString()}</div>
+                <div><strong>Total Alerts:</strong> ${overstayLogs.length} vehicles</div>
+                <div><strong>Generated By:</strong> UniPark System Operator</div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%; text-align: left;">#</th>
+                        <th style="width: 16%; text-align: left;">Plate Number</th>
+                        <th style="width: 24%; text-align: left;">Driver Name</th>
+                        <th style="width: 20%; text-align: left;">Parking Zone</th>
+                        <th style="width: 20%; text-align: left;">Entry Time</th>
+                        <th style="width: 10%; text-align: left;">Duration</th>
+                        <th style="width: 5%; text-align: left;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${overstayHTML}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} Strathmore University UniPark. All rights reserved. Confidential Security Document.</p>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => { window.close(); }, 500);
+                }
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(pageContent);
+    printWindow.document.close();
+}
+
+export function printInfringementsPDF(infringements) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const infringementHTML = infringements.map((inf, i) => `
+        <tr style="border-bottom: 1px solid #E5E7EB;">
+            <td style="padding: 10px; text-align: left;">${i + 1}</td>
+            <td style="padding: 10px; text-align: left; font-family: monospace; font-weight: bold;">${inf.vehicle_registration}</td>
+            <td style="padding: 10px; text-align: left;">${inf.driver_name}</td>
+            <td style="padding: 10px; text-align: left;">${inf.infringement_type}</td>
+            <td style="padding: 10px; text-align: left;">${inf.parking_zone}</td>
+            <td style="padding: 10px; text-align: left;">KES ${inf.fine_amount?.toLocaleString() ?? '0'}</td>
+            <td style="padding: 10px; text-align: left; font-size: 12px; color: #4B5563;">${inf.reported_at}</td>
+            <td style="padding: 10px; text-align: left;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; ${inf.status === 'resolved' ? 'background-color: #DCFCE7; color: #166534;' : inf.status === 'dismissed' ? 'background-color: #F3F4F6; color: #4B5563;' : 'background-color: #FEF3C7; color: #B45309;'}">
+                    ${inf.status.replace('_', ' ')}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+
+    const pageContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>UniPark - Infringements Report</title>
+            <style>
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    color: #1F2937;
+                    margin: 40px;
+                    line-height: 1.5;
+                }
+                .header {
+                    border-bottom: 2px solid #0066CC;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .logo-section {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .title-main {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #0066CC;
+                    margin: 0;
+                }
+                .title-sub {
+                    font-size: 14px;
+                    color: #4B5563;
+                    margin: 5px 0 0 0;
+                }
+                .meta-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10px;
+                    margin-bottom: 30px;
+                    font-size: 12px;
+                    background-color: #F9FAFB;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 1px solid #E5E7EB;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                th {
+                    background-color: #0066CC;
+                    color: white;
+                    padding: 12px 10px;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                td {
+                    font-size: 13px;
+                    border-bottom: 1px solid #E5E7EB;
+                }
+                .footer {
+                    margin-top: 50px;
+                    border-top: 1px solid #E5E7EB;
+                    padding-top: 15px;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #9CA3AF;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="logo-section">
+                    <div>
+                        <h1 class="title-main">UniPark Strathmore</h1>
+                        <p class="title-sub">Strathmore University Parking Management Portal</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-weight: bold; color: #374151; font-size: 14px;">INFRINGEMENTS REPORT</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="meta-grid">
+                <div><strong>Report Type:</strong> Driver and vehicle infringement records</div>
+                <div><strong>Date Generated:</strong> ${new Date().toLocaleString()}</div>
+                <div><strong>Total Records:</strong> ${infringements.length} cases</div>
+                <div><strong>Generated By:</strong> UniPark System Operator</div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 4%; text-align: left;">#</th>
+                        <th style="width: 14%; text-align: left;">Vehicle</th>
+                        <th style="width: 16%; text-align: left;">Driver</th>
+                        <th style="width: 18%; text-align: left;">Type</th>
+                        <th style="width: 16%; text-align: left;">Zone</th>
+                        <th style="width: 10%; text-align: left;">Fine</th>
+                        <th style="width: 12%; text-align: left;">Reported</th>
+                        <th style="width: 10%; text-align: left;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${infringementHTML}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} Strathmore University UniPark. All rights reserved. Confidential Security Document.</p>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => { window.close(); }, 500);
+                }
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(pageContent);
+    printWindow.document.close();
+}
+
 export function printAnalyticsPDF(metrics, zones) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;

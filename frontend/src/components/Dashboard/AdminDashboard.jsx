@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ASSETS } from '../../constants/assets';
@@ -13,12 +13,13 @@ import LookupTab from './Admin/LookupTab';
 import AnalyticsTab from './Admin/AnalyticsTab';
 import ProfileTab from './Admin/ProfileTab';
 import GuardManagementPage from './Admin/GuardManagementPage';
+import { uniparkApi } from '../../utils/uniparkApi';
 
 // --- MOCK SEED DATA ---
 const INITIAL_ZONES = [
     { id: '1', name: 'Phase 1 Lot', code: 'P1', total: 150, occupied: 112, reserved: 15, cordoned: 5, status: 'active' },
     { id: '2', name: 'Phase 2 Lot', code: 'P2', total: 120, occupied: 45, reserved: 5, cordoned: 0, status: 'active' },
-    { id: '3', name: 'Siwaka Lot', code: 'SWK', total: 80, occupied: 74, reserved: 4, cordoned: 2, status: 'active' },
+    { id: '3', name: 'Oval Building Lot', code: 'Oval', total: 15, occupied: 10, reserved: 3, cordoned: 0, status: 'active' },
     { id: '4', name: 'Library Lot', code: 'LIB', total: 90, occupied: 86, reserved: 2, cordoned: 2, status: 'active' },
     { id: '5', name: 'Management Lot', code: 'MGT', total: 40, occupied: 15, reserved: 20, cordoned: 0, status: 'active' },
     { id: '6', name: 'Sports Complex Lot', code: 'SPC', total: 100, occupied: 12, reserved: 0, cordoned: 45, status: 'active' },
@@ -36,7 +37,7 @@ const INITIAL_LOGS = [
     { id: 'log-3', plate: 'KCA 789B', driver: 'Prof. Anthony Khajira', zone: 'Management Lot', entry: '2026-06-22 09:00 AM', exit: '--', status: 'Entered' },
     { id: 'log-4', plate: 'KDD 555Y', driver: 'Sharon Wambui', zone: 'Sports Complex Lot', entry: '2026-06-22 06:15 AM', exit: '2026-06-22 10:30 AM', status: 'Exited' },
     { id: 'log-5', plate: 'KAA 999Z', driver: 'David Ochieng', zone: 'Phase 2 Lot', entry: '2026-06-21 07:45 AM', exit: '--', status: 'Entered' },
-    { id: 'log-6', plate: 'KCC 888H', driver: 'Mercy Njoroge', zone: 'Siwaka Lot', entry: '2026-06-20 14:00 PM', exit: '--', status: 'Entered' },
+    { id: 'log-6', plate: 'KCC 888H', driver: 'Mercy Njoroge', zone: 'Oval Building Lot', entry: '2026-06-20 14:00 PM', exit: '--', status: 'Entered' },
 ];
 
 const INITIAL_ANNOUNCEMENTS = [
@@ -109,10 +110,77 @@ export default function AdminDashboard() {
     const [toastMessage, setToastMessage] = useState('');
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
+    const formatDateTime = (value) => {
+        if (!value) return '--';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+    };
+
+    const formatDuration = (minutes) => {
+        if (minutes == null || Number.isNaN(Number(minutes))) return 'Extended';
+        const totalMinutes = Math.max(0, Math.round(Number(minutes)));
+        const hours = Math.floor(totalMinutes / 60);
+        const remainingMinutes = totalMinutes % 60;
+        if (hours === 0) {
+            return `${remainingMinutes}m`;
+        }
+        return `${hours}h ${remainingMinutes}m`;
+    };
+
+    const mapZone = (zone) => ({
+        id: zone.zone_id,
+        name: zone.zone_name,
+        code: zone.zone_code,
+        total: zone.total_spaces,
+        occupied: zone.occupied_spaces,
+        reserved: zone.reserved_spaces,
+        cordoned: zone.cordoned_spaces,
+        status: zone.occupancy_percentage >= 90 ? 'critical' : zone.occupancy_percentage >= 70 ? 'warning' : 'active',
+    });
+
+    const mapLog = (log) => ({
+        id: log.id,
+        plate: log.vehicle_registration || 'Unknown',
+        driver: log.driver_name || 'Unknown Driver',
+        zone: log.parking_zone_name || log.parking_zone_code || 'Unknown Zone',
+        entry: formatDateTime(log.entry_time),
+        exit: formatDateTime(log.exit_time),
+        status: log.status === 'exited' ? 'Exited' : 'Entered',
+        durationMinutes: log.duration_minutes,
+        duration: formatDuration(log.duration_minutes),
+        entryTimeValue: log.entry_time,
+    });
+
     const triggerToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(''), 3000);
     };
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadDashboardData = async () => {
+            try {
+                const [zoneOccupancy, vehicleLogs] = await Promise.all([
+                    uniparkApi.getZoneOccupancy(),
+                    uniparkApi.getVehicleLogs(),
+                ]);
+
+                if (!isMounted) return;
+
+                setZones(zoneOccupancy.map(mapZone));
+                setLogs(vehicleLogs.map(mapLog));
+            } catch (error) {
+                console.warn('Using dashboard seed data until backend is available:', error);
+            }
+        };
+
+        loadDashboardData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     // --- DERIVED STATE ---
     const metrics = useMemo(() => {
@@ -126,11 +194,24 @@ export default function AdminDashboard() {
     }, [zones]);
 
     const overstayLogs = useMemo(() => {
-        return logs.filter(log => {
+        return logs.filter((log) => {
             if (log.status !== 'Entered') return false;
-            if (log.plate === 'KAA 999Z' && overstayThreshold <= 2000) return true;
-            if (log.plate === 'KCC 888H' && overstayThreshold <= 4000) return true;
-            return false;
+
+            const entryTimestamp = Date.parse(log.entryTimeValue || log.entry);
+            if (Number.isNaN(entryTimestamp)) return false;
+
+            const elapsedMinutes = Math.max(0, Math.floor((Date.now() - entryTimestamp) / 60000));
+            return elapsedMinutes >= overstayThreshold;
+        }).map((log) => {
+            const entryTimestamp = Date.parse(log.entryTimeValue || log.entry);
+            const elapsedMinutes = Number.isNaN(entryTimestamp)
+                ? log.durationMinutes ?? overstayThreshold
+                : Math.max(0, Math.floor((Date.now() - entryTimestamp) / 60000));
+
+            return {
+                ...log,
+                duration: formatDuration(elapsedMinutes),
+            };
         });
     }, [logs, overstayThreshold]);
 
