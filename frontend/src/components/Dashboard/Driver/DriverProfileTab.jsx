@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { uniparkApi } from '../../../utils/uniparkApi';
 
 function Panel({ title, icon, children, className = '' }) {
     return (
@@ -64,16 +65,46 @@ export default function DriverProfileTab({ triggerToast }) {
         new: '',
         confirm: '',
     });
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [profileError, setProfileError] = useState('');
 
     useEffect(() => {
-        if (user) {
-            setProfileForm({
-                name: user.name || 'Alex Driver',
-                email: user.email || '12345',
-                phone: user.phone || '+254 712 345678',
-                department: user.department || 'Faculty of IT',
-            });
-        }
+        let isMounted = true;
+
+        const loadProfile = async () => {
+            try {
+                setIsLoadingProfile(true);
+                setProfileError('');
+
+                const profile = await uniparkApi.getDriverProfile();
+                if (!isMounted) {
+                    return;
+                }
+
+                setProfileForm({
+                    name: profile.name || user?.name || 'Alex Driver',
+                    email: profile.email || user?.email || '12345',
+                    phone: profile.phone || user?.phone || '+254 712 345678',
+                    department: profile.department || user?.department || 'Faculty of IT',
+                });
+            } catch (error) {
+                if (isMounted) {
+                    setProfileError(error.message || 'Unable to load profile details right now.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingProfile(false);
+                }
+            }
+        };
+
+        loadProfile();
+
+        return () => {
+            isMounted = false;
+        };
     }, [user]);
 
     const handleProfileChange = (e) => {
@@ -86,20 +117,55 @@ export default function DriverProfileTab({ triggerToast }) {
         setPasswordForm(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSaveProfile = (e) => {
+    const handleSaveProfile = async (e) => {
         e.preventDefault();
-        updateProfile(profileForm);
-        triggerToast('Profile information saved successfully!');
+
+        const [firstName, ...lastNameParts] = profileForm.name.trim().split(/\s+/);
+
+        try {
+            setIsSavingProfile(true);
+            const updatedProfile = await uniparkApi.updateDriverProfile({
+                first_name: firstName,
+                last_name: lastNameParts.join(' ') || firstName,
+                phone_number: profileForm.phone,
+                department: profileForm.department,
+            });
+
+            updateProfile({
+                name: updatedProfile.name,
+                email: updatedProfile.email,
+                phone: updatedProfile.phone || profileForm.phone,
+                department: updatedProfile.department || profileForm.department,
+            });
+            triggerToast('Profile information saved successfully!');
+        } catch (error) {
+            triggerToast(error.message || 'Unable to save profile changes.');
+        } finally {
+            setIsSavingProfile(false);
+        }
     };
 
-    const handleUpdatePassword = (e) => {
+    const handleUpdatePassword = async (e) => {
         e.preventDefault();
         if (passwordForm.new !== passwordForm.confirm) {
             alert('Passwords do not match!');
             return;
         }
-        triggerToast('Password updated successfully!');
-        setPasswordForm({ current: '', new: '', confirm: '' });
+
+        try {
+            setIsUpdatingPassword(true);
+            await uniparkApi.updateDriverPassword({
+                current_password: passwordForm.current,
+                new_password: passwordForm.new,
+            });
+
+            triggerToast('Password updated successfully!');
+            setPasswordForm({ current: '', new: '', confirm: '' });
+        } catch (error) {
+            triggerToast(error.message || 'Unable to update password.');
+        } finally {
+            setIsUpdatingPassword(false);
+        }
     };
 
     const handleImageUpload = (e) => {
@@ -130,6 +196,12 @@ export default function DriverProfileTab({ triggerToast }) {
                         title="Personal Information"
                         icon={<svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                     >
+                        {isLoadingProfile ? (
+                            <p className="mb-6 text-sm text-slate-500">Loading profile details...</p>
+                        ) : null}
+                        {profileError && (
+                            <p className="mb-6 text-sm text-amber-700">{profileError}</p>
+                        )}
                         {/* Avatar Badge */}
                         <div className="mb-6 flex justify-center">
                             <div className="relative group w-24 h-24 rounded-full overflow-hidden bg-slate-50 border-4 border-white shadow-inner flex items-center justify-center">
@@ -196,9 +268,10 @@ export default function DriverProfileTab({ triggerToast }) {
                             <div className="mt-5 flex justify-end">
                                 <button 
                                     type="submit" 
-                                    className="rounded-xl bg-blue-700 hover:bg-blue-800 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
+                                    disabled={isSavingProfile}
+                                    className="rounded-xl bg-blue-700 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
                                 >
-                                    Save Changes
+                                    {isSavingProfile ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
                         </form>
@@ -253,9 +326,10 @@ export default function DriverProfileTab({ triggerToast }) {
                                 </button>
                                 <button 
                                     type="submit" 
-                                    className="rounded-xl bg-blue-700 hover:bg-blue-800 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
+                                    disabled={isUpdatingPassword}
+                                    className="rounded-xl bg-blue-700 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
                                 >
-                                    Update Password
+                                    {isUpdatingPassword ? 'Updating...' : 'Update Password'}
                                 </button>
                             </div>
                         </form>

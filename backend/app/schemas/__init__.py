@@ -49,6 +49,62 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+class PasswordUpdateRequest(BaseModel):
+    """Change password request"""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+
+
+class DriverProfileUpdateRequest(BaseModel):
+    """Update driver profile request"""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    department: Optional[str] = None
+    student_id: Optional[str] = None
+    faculty_id: Optional[str] = None
+    staff_id: Optional[str] = None
+    license_number: Optional[str] = None
+    license_expiry: Optional[datetime] = None
+
+
+class DriverVehicleResponse(BaseModel):
+    """Driver vehicle response"""
+    id: UUID
+    driver_id: UUID
+    registration_number: str
+    make: str
+    model: str
+    color: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    is_primary: bool
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DriverLogResponse(BaseModel):
+    """Driver log response"""
+    id: UUID
+    vehicle_id: UUID
+    driver_id: UUID
+    parking_space_id: Optional[UUID] = None
+    parking_zone_id: UUID
+    status: str
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    vehicle_registration: Optional[str] = None
+    parking_zone_name: Optional[str] = None
+    parking_zone_code: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ==================== VEHICLE SCHEMAS ====================
 
 class VehicleCreateRequest(BaseModel):

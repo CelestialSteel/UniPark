@@ -194,7 +194,15 @@ export function AuthProvider({ children }) {
     };
 
     const updateProfile = (profileData) => {
-        setUser((prev) => (prev ? { ...prev, ...profileData } : null));
+        setUser((prev) => {
+            if (!prev) {
+                return null;
+            }
+
+            const nextUser = { ...prev, ...profileData };
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+            return nextUser;
+        });
     };
 
     const value = {

@@ -52,8 +52,39 @@ export async function requestJson(path, { method = 'GET', body, auth = true } = 
 }
 
 export const uniparkApi = {
+    getDriverProfile: () => requestJson('/api/v1/drivers/profile'),
+    updateDriverProfile: (payload) => requestJson('/api/v1/drivers/profile', { method: 'PATCH', body: payload }),
+    getDriverVehicles: () => requestJson('/api/v1/drivers/vehicles'),
+    getDriverLogs: (params = {}) => {
+        const query = new URLSearchParams();
+        if (params.skip !== undefined) {
+            query.set('skip', String(params.skip));
+        }
+        if (params.limit !== undefined) {
+            query.set('limit', String(params.limit));
+        }
+        const suffix = query.toString() ? `?${query.toString()}` : '';
+        return requestJson(`/api/v1/drivers/logs${suffix}`);
+    },
+    getDriverInfringements: (params = {}) => {
+        const query = new URLSearchParams();
+        if (params.skip !== undefined) {
+            query.set('skip', String(params.skip));
+        }
+        if (params.limit !== undefined) {
+            query.set('limit', String(params.limit));
+        }
+        const suffix = query.toString() ? `?${query.toString()}` : '';
+        return requestJson(`/api/v1/drivers/infringements${suffix}`);
+    },
+    updateDriverPassword: (payload) => requestJson('/api/v1/drivers/password', { method: 'PATCH', body: payload }),
     getZoneOccupancy: () => requestJson('/api/v1/zones/occupancy'),
     getVehicleLogs: () => requestJson('/api/v1/logs'),
     getInfringements: () => requestJson('/api/v1/infringements'),
     updateInfringement: (id, payload) => requestJson(`/api/v1/infringements/${id}`, { method: 'PATCH', body: payload }),
+    createZone: (payload) => requestJson('/api/v1/zones', { method: 'POST', body: payload }),
+    updateZone: (id, payload) => requestJson(`/api/v1/zones/${id}`, { method: 'PATCH', body: payload }),
+    createSpaceReservation: (id, payload) => requestJson(`/api/v1/spaces/${id}/reserve`, { method: 'POST', body: payload }),
+    createSpaceCordone: (id, payload) => requestJson(`/api/v1/spaces/${id}/cordone`, { method: 'POST', body: payload }),
+    getAnalyticsDashboard: () => requestJson('/api/v1/analytics/dashboard'),
 };

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_security_user
 from app.schemas import VehicleEntryRequest, VehicleExitRequest, VehicleLogResponse
-from app.models import Vehicle, VehicleLog, ParkingSpace, ParkingZone, User
+from app.models import Vehicle, VehicleLog, ParkingSpace, ParkingZone, User, UserRole
 from datetime import datetime
 import logging
 
@@ -46,7 +46,7 @@ async def list_logs(
 
     query = db.query(VehicleLog)
 
-    if current_user.role == "driver":
+    if current_user.role == UserRole.DRIVER:
         from app.models import Driver
         driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
         if driver:

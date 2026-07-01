@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_admin_user, get_security_user
 from app.schemas import InfringementCreateRequest, InfringementUpdateRequest, InfringementResponse
-from app.models import Infringement, Vehicle, User, Notification, NotificationType
+from app.models import Infringement, Vehicle, User, UserRole, Notification, NotificationType
 from datetime import datetime
 import logging
 
@@ -50,7 +50,7 @@ async def list_infringements(
     query = db.query(Infringement)
     
     # Drivers can only see their own infringements
-    if current_user.role == "driver":
+    if current_user.role == UserRole.DRIVER:
         from app.models import Driver
         driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
         if driver:
@@ -80,7 +80,7 @@ async def get_infringement(
         )
     
     # Drivers can only view their own infringements
-    if current_user.role == "driver":
+    if current_user.role == UserRole.DRIVER:
         from app.models import Driver
         driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
         if not driver or infringement.driver_id != driver.id:

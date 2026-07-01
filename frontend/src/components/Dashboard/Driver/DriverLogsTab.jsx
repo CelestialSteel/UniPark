@@ -1,114 +1,117 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { uniparkApi } from '../../../utils/uniparkApi';
 
-const INITIAL_LOGS = [
-    {
-        id: 'log-1',
-        status: 'Active Now',
-        zone: 'Front Library',
-        location: 'Phase 1 Area',
-        timeDetails: {
-            main: 'In: 08:45 AM',
-            sub: '2h 15m elapsed',
-            isElapsed: true,
-            entry: '08:45 AM',
-            exit: null,
-            date: 'Today'
-        },
-        vehicle: 'Tesla Model 3',
-        plate: 'ABC-1234',
-    },
-    {
-        id: 'log-2',
-        status: 'Completed',
-        zone: 'MSB Parking',
-        location: 'Management Science Building',
-        timeDetails: {
-            main: '09:00 AM - 11:30 AM',
-            sub: '2h 30m total',
-            isElapsed: false,
-            entry: '09:00 AM',
-            exit: '11:30 AM',
-            date: 'Today'
-        },
-        vehicle: 'Toyota Camry',
-        plate: 'XYZ-9876',
-    },
-    {
-        id: 'log-3',
-        status: 'Violation',
-        zone: 'Phase 1 Lot',
-        location: 'Main Campus Area',
-        timeDetails: {
-            main: 'Overstayed',
-            sub: 'Expired: 01:15 PM',
-            isElapsed: false,
-            entry: '05:15 AM',
-            exit: '01:15 PM (Expired)',
-            date: 'Today'
-        },
-        vehicle: 'Honda Civic',
-        plate: 'LMN-5544',
-    },
-    {
-        id: 'log-4',
-        status: 'Completed',
-        zone: 'Front Library',
-        location: 'Phase 1 Area',
-        timeDetails: {
-            main: 'Yesterday, 02:45 PM',
-            sub: '45m total',
-            isElapsed: false,
-            entry: '02:45 PM',
-            exit: '03:30 PM',
-            date: 'Yesterday'
-        },
-        vehicle: 'Ford F-150',
-        plate: 'TRK-2211',
-    },
-    {
-        id: 'log-5',
-        status: 'Completed',
-        zone: 'MSB Parking',
-        location: 'Management Science Building',
-        timeDetails: {
-            main: 'Jun 24, 10:15 AM - 01:30 PM',
-            sub: '3h 15m total',
-            isElapsed: false,
-            entry: '10:15 AM',
-            exit: '01:30 PM',
-            date: 'Jun 24, 2026'
-        },
-        vehicle: 'Toyota Camry',
-        plate: 'XYZ-9876',
-    },
-    {
-        id: 'log-6',
-        status: 'Completed',
-        zone: 'Phase 1 Lot',
-        location: 'Main Campus Area',
-        timeDetails: {
-            main: 'Jun 23, 07:30 AM - 12:00 PM',
-            sub: '4h 30m total',
-            isElapsed: false,
-            entry: '07:30 AM',
-            exit: '12:00 PM',
-            date: 'Jun 23, 2026'
-        },
-        vehicle: 'Honda Civic',
-        plate: 'LMN-5544',
+function formatClock(dateValue) {
+    if (!dateValue) {
+        return 'N/A';
     }
-];
+
+    return new Date(dateValue).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateLabel(dateValue) {
+    if (!dateValue) {
+        return 'Today';
+    }
+
+    return new Date(dateValue).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+function formatDuration(minutes) {
+    if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) {
+        return '0m';
+    }
+
+    const totalMinutes = Math.max(0, Number(minutes));
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+
+    if (hours === 0) {
+        return `${remainingMinutes}m`;
+    }
+
+    return `${hours}h ${remainingMinutes}m`;
+}
+
+function toDisplayLog(log) {
+    const entryDate = log.entry_time ? new Date(log.entry_time) : null;
+    const exitDate = log.exit_time ? new Date(log.exit_time) : null;
+    const isActive = !exitDate && log.status === 'entered';
+    const durationMinutes = isActive && entryDate
+        ? Math.max(0, Math.round((Date.now() - entryDate.getTime()) / 60000))
+        : log.duration_minutes;
+
+    return {
+        id: String(log.id),
+        status: isActive ? 'Active Now' : log.status === 'denied' ? 'Violation' : 'Completed',
+        zone: log.parking_zone_name || log.parking_zone_code || 'Campus Zone',
+        location: log.parking_zone_code || log.parking_zone_name || 'Campus Zone',
+        timeDetails: {
+            main: isActive
+                ? `In: ${formatClock(entryDate)}`
+                : exitDate
+                    ? `${formatClock(entryDate)} - ${formatClock(exitDate)}`
+                    : formatDateLabel(entryDate),
+            sub: isActive
+                ? `${formatDuration(durationMinutes)} elapsed`
+                : `${formatDuration(durationMinutes)} total`,
+            isElapsed: isActive,
+            entry: formatClock(entryDate),
+            exit: exitDate ? formatClock(exitDate) : null,
+            date: formatDateLabel(entryDate),
+        },
+        vehicle: log.vehicle_registration || 'Linked Vehicle',
+        plate: log.vehicle_registration || 'N/A',
+    };
+}
 
 export default function DriverLogsTab() {
-    const [logs, setLogs] = useState(INITIAL_LOGS);
+    const [logs, setLogs] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All'); // 'All', 'Active Now', 'Completed', 'Violation'
     const [timeFilter, setTimeFilter] = useState('Last 30 Days'); // 'Last 30 Days', 'Last 7 Days', 'Today'
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+    const [logsError, setLogsError] = useState('');
 
     // Modal State
     const [selectedLog, setSelectedLog] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadLogs = async () => {
+            try {
+                setIsLoadingLogs(true);
+                setLogsError('');
+
+                const response = await uniparkApi.getDriverLogs({ limit: 50 });
+                if (isMounted) {
+                    setLogs(response.map(toDisplayLog));
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setLogs([]);
+                    setLogsError(error.message || 'Unable to load your parking logs right now.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingLogs(false);
+                }
+            }
+        };
+
+        loadLogs();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     // Filter and search logic
     const filteredLogs = useMemo(() => {
@@ -139,6 +142,18 @@ export default function DriverLogsTab() {
                 <h1 className="text-2xl font-bold text-slate-900">Parking Logs</h1>
                 <p className="mt-1 text-xs text-slate-500">Track and review your parking history at Strathmore Campus.</p>
             </div>
+
+            {isLoadingLogs && (
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-600 shadow-xs">
+                    Loading your parking logs...
+                </div>
+            )}
+
+            {logsError && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 shadow-xs">
+                    {logsError}
+                </div>
+            )}
 
             {/* Search and Filters panel */}
             <div className="flex flex-wrap items-center gap-3">

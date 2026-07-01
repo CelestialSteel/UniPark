@@ -1,20 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-
-function getAccessToken() {
-    try {
-        const rawTokens = localStorage.getItem('unipark_auth_tokens');
-        if (!rawTokens) {
-            return null;
-        }
-
-        const parsedTokens = JSON.parse(rawTokens);
-        return parsedTokens.access_token || null;
-    } catch {
-        return null;
-    }
-}
+import { uniparkApi } from '../../../utils/uniparkApi';
 
 function StatBox({ label, value }) {
     return (
@@ -30,6 +15,55 @@ export default function DriverHomeTab({ user, setActiveTab }) {
     const [driverProfile, setDriverProfile] = useState(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [profileError, setProfileError] = useState('');
+    const [recentActivities, setRecentActivities] = useState([]);
+
+    const formatClock = (dateValue) => {
+        if (!dateValue) {
+            return 'N/A';
+        }
+
+        const date = new Date(dateValue);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const formatDuration = (minutes) => {
+        if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) {
+            return '0m';
+        }
+
+        const totalMinutes = Math.max(0, Number(minutes));
+        const hours = Math.floor(totalMinutes / 60);
+        const remainingMinutes = totalMinutes % 60;
+
+        if (hours === 0) {
+            return `${remainingMinutes}m`;
+        }
+
+        return `${hours}h ${remainingMinutes}m`;
+    };
+
+    const mapLogToActivity = (log) => {
+        const entryDate = log.entry_time ? new Date(log.entry_time) : null;
+        const exitDate = log.exit_time ? new Date(log.exit_time) : null;
+        const isActive = !exitDate && log.status === 'entered';
+        const computedMinutes = isActive && entryDate ? Math.max(0, Math.round((Date.now() - entryDate.getTime()) / 60000)) : log.duration_minutes;
+        const timeLabel = isActive
+            ? `In: ${formatClock(entryDate)}`
+            : exitDate
+                ? `${formatClock(entryDate)} - ${formatClock(exitDate)}`
+                : formatClock(entryDate);
+
+        return {
+            zone: log.parking_zone_name || log.parking_zone_code || 'Parking Zone',
+            date: entryDate ? entryDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today',
+            duration: isActive ? `${formatDuration(computedMinutes)} elapsed` : `${formatDuration(computedMinutes)} total`,
+            status: isActive ? 'ACTIVE' : log.status === 'denied' ? 'DENIED' : 'COMPLETED',
+            entryLabel: timeLabel,
+            vehicle: log.vehicle_registration || 'Linked Vehicle',
+            plate: log.vehicle_registration || 'N/A',
+            location: log.parking_zone_code || log.parking_zone_name || 'Campus Zone',
+        };
+    };
 
     // Simulate ticking parking duration
     useEffect(() => {
@@ -52,14 +86,6 @@ export default function DriverHomeTab({ user, setActiveTab }) {
     }, [duration]);
 
     useEffect(() => {
-        const accessToken = getAccessToken();
-
-        if (!accessToken) {
-            setIsLoadingProfile(false);
-            setDriverProfile(null);
-            return;
-        }
-
         let isMounted = true;
 
         const loadDriverProfile = async () => {
@@ -67,24 +93,20 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                 setIsLoadingProfile(true);
                 setProfileError('');
 
-                const response = await fetch(`${API_BASE_URL}/api/v1/drivers/profile`, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                });
+                const [profile, logs] = await Promise.all([
+                    uniparkApi.getDriverProfile(),
+                    uniparkApi.getDriverLogs({ limit: 3 }),
+                ]);
 
-                if (!response.ok) {
-                    throw new Error('Unable to load driver profile');
-                }
-
-                const profile = await response.json();
                 if (isMounted) {
                     setDriverProfile(profile);
+                    setRecentActivities(logs.map(mapLogToActivity));
                 }
-            } catch {
+            } catch (error) {
                 if (isMounted) {
                     setDriverProfile(null);
-                    setProfileError('Vehicle status is unavailable right now.');
+                    setRecentActivities([]);
+                    setProfileError(error.message || 'Vehicle status is unavailable right now.');
                 }
             } finally {
                 if (isMounted) {
@@ -102,12 +124,6 @@ export default function DriverHomeTab({ user, setActiveTab }) {
 
     const activeVehicleCount = driverProfile?.active_vehicles ?? 0;
     const hasLinkedVehicle = activeVehicleCount > 0;
-
-    const recentActivities = [
-        { zone: 'Front Library', date: 'Jun 30, 2026', duration: '04:22:00', status: 'COMPLETED' },
-        { zone: 'MSB Parking', date: 'Jun 28, 2026', duration: '02:15:00', status: 'COMPLETED' },
-        { zone: 'Sports Complex Lot', date: 'Jun 25, 2026', duration: '08:45:00', status: 'OVERSTAY' },
-    ];
 
     return (
         <div className="space-y-6">

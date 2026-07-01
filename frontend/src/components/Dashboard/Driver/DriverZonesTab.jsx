@@ -1,5 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ASSETS } from '../../../constants/assets';
+import { uniparkApi } from '../../../utils/uniparkApi';
+
+function buildSegments(zones) {
+    const groups = [
+        {
+            id: 'phase1',
+            name: 'Low Traffic',
+            description: 'Zones with room to spare',
+            occupancy: 0,
+            badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+            subZones: [],
+        },
+        {
+            id: 'phase2',
+            name: 'Moderate Traffic',
+            description: 'Zones that are filling up',
+            occupancy: 0,
+            badgeColor: 'bg-amber-50 text-amber-700 border-amber-100',
+            subZones: [],
+        },
+        {
+            id: 'sports',
+            name: 'High Traffic',
+            description: 'Zones nearing capacity',
+            occupancy: 0,
+            badgeColor: 'bg-red-50 text-red-700 border-red-100',
+            subZones: [],
+        },
+    ];
+
+    zones.forEach((zone) => {
+        const occupancy = Number(zone.occupancy_percentage || 0);
+        const targetGroup = occupancy >= 75 ? groups[2] : occupancy >= 40 ? groups[1] : groups[0];
+
+        targetGroup.subZones.push({
+            name: zone.zone_name,
+            code: zone.zone_code,
+            capacity: zone.total_spaces,
+            occupied: zone.occupied_spaces,
+            available: zone.available_spaces,
+            reserved: zone.reserved_spaces,
+            cordoned: zone.cordoned_spaces,
+            maintenance: zone.maintenance_spaces,
+            occupancy,
+            status: occupancy >= 75 ? 'HIGHLY BUSY' : occupancy >= 40 ? 'NORMAL BUSY' : 'AVAILABLE',
+            statusColor: occupancy >= 75
+                ? 'text-red-700 bg-red-50'
+                : occupancy >= 40
+                    ? 'text-amber-700 bg-amber-50'
+                    : 'text-emerald-700 bg-emerald-50',
+        });
+    });
+
+    groups.forEach((group) => {
+        if (group.subZones.length > 0) {
+            const averageOccupancy = group.subZones.reduce((sum, zone) => sum + zone.occupancy, 0) / group.subZones.length;
+            group.occupancy = Math.round(averageOccupancy);
+        }
+    });
+
+    return groups;
+}
 
 export default function DriverZonesTab() {
     const [expandedSegments, setExpandedSegments] = useState({
@@ -9,6 +71,40 @@ export default function DriverZonesTab() {
     });
 
     const [selectedZone, setSelectedZone] = useState(null);
+    const [segments, setSegments] = useState([]);
+    const [isLoadingZones, setIsLoadingZones] = useState(true);
+    const [zonesError, setZonesError] = useState('');
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadZones = async () => {
+            try {
+                setIsLoadingZones(true);
+                setZonesError('');
+
+                const response = await uniparkApi.getZoneOccupancy();
+                if (isMounted) {
+                    setSegments(buildSegments(response));
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setSegments([]);
+                    setZonesError(error.message || 'Unable to load zone occupancy right now.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingZones(false);
+                }
+            }
+        };
+
+        loadZones();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const toggleSegment = (segmentId) => {
         setExpandedSegments(prev => ({
@@ -16,42 +112,6 @@ export default function DriverZonesTab() {
             [segmentId]: !prev[segmentId]
         }));
     };
-
-    // Sub-zones data grouped by facility segment
-    const segments = [
-        {
-            id: 'phase1',
-            name: 'Phase 1',
-            description: 'Adminstration block',
-            occupancy: 25,
-            badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-            subZones: [
-                { name: 'Phase 1 Main Lot', capacity: 150, occupied: 37, status: 'AVAILABLE', statusColor: 'text-emerald-700 bg-emerald-50' },
-            ]
-        },
-        {
-            id: 'phase2',
-            name: 'Phase 2',
-            description: 'Administration & Library District',
-            occupancy: 65,
-            badgeColor: 'bg-amber-50 text-amber-700 border-amber-100',
-            subZones: [
-                { name: 'Front Library', capacity: 450, occupied: 292, status: 'NORMAL BUSY', statusColor: 'text-amber-700 bg-amber-50' },
-                { name: 'MSB Parking', capacity: 600, occupied: 380, status: 'NORMAL BUSY', statusColor: 'text-amber-700 bg-amber-50' }
-            ]
-        },
-        {
-            id: 'sports',
-            name: 'Sports Complex',
-            description: 'Arena, Gym & Aquatic Center',
-            occupancy: 92,
-            badgeColor: 'bg-red-50 text-red-700 border-red-100',
-            subZones: [
-                { name: 'Sports Complex Lot', capacity: 100, occupied: 92, status: 'HIGHLY BUSY', statusColor: 'text-red-700 bg-red-50' },
-                { name: 'Management Lot', capacity: 40, occupied: 37, status: 'HIGHLY BUSY', statusColor: 'text-red-700 bg-red-50' }
-            ]
-        }
-    ];
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
@@ -75,6 +135,18 @@ export default function DriverZonesTab() {
             {/* Accordion facility segments */}
             <div className="space-y-4">
                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Facility Segments</p>
+
+                {isLoadingZones && (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-600 shadow-xs">
+                        Loading live zone occupancy...
+                    </div>
+                )}
+
+                {zonesError && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm font-medium text-amber-800 shadow-xs">
+                        {zonesError}
+                    </div>
+                )}
 
                 {segments.map((seg) => {
                     const isExpanded = expandedSegments[seg.id];
@@ -146,7 +218,10 @@ export default function DriverZonesTab() {
                                                 const fillPercent = Math.round((sub.occupied / sub.capacity) * 100);
                                                 return (
                                                     <tr key={i} className="hover:bg-slate-50/30 transition text-sm">
-                                                        <td className="px-6 py-4 font-bold text-slate-800">{sub.name}</td>
+                                                        <td className="px-6 py-4 font-bold text-slate-800">
+                                                            <div>{sub.name}</div>
+                                                            <div className="mt-0.5 text-[10px] font-medium text-slate-400">{sub.code}</div>
+                                                        </td>
                                                         <td className="px-6 py-4 text-slate-500">{sub.capacity} Spots</td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
@@ -163,11 +238,7 @@ export default function DriverZonesTab() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
-                                                                sub.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                                sub.status === 'NORMAL BUSY' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                                'bg-red-50 text-red-700 border-red-100'
-                                                            }`}>
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${sub.statusColor}`}>
                                                                 {sub.status}
                                                             </span>
                                                         </td>
@@ -189,6 +260,12 @@ export default function DriverZonesTab() {
                         </div>
                     );
                 })}
+
+                {!isLoadingZones && !zonesError && segments.length === 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-500 shadow-xs">
+                        No zone occupancy data was returned.
+                    </div>
+                )}
             </div>
 
             {/* Map overview */}
@@ -231,6 +308,10 @@ export default function DriverZonesTab() {
                             <div className="flex justify-between border-b border-slate-100 pb-2">
                                 <span className="text-gray-400">Occupied Bays</span>
                                 <span className="font-semibold text-slate-800">{selectedZone.occupied} Spots</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-100 pb-2">
+                                <span className="text-gray-400">Occupancy</span>
+                                <span className="font-semibold text-slate-800">{selectedZone.occupancy}%</span>
                             </div>
                             <div className="flex justify-between border-b border-slate-100 pb-2">
                                 <span className="text-gray-400">Rate / Fee</span>
