@@ -22,12 +22,11 @@ export default function DriverZonesTab() {
         {
             id: 'phase1',
             name: 'Phase 1',
-            description: 'Academic Center & Labs',
+            description: 'Adminstration block',
             occupancy: 25,
             badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
             subZones: [
                 { name: 'Phase 1 Main Lot', capacity: 150, occupied: 37, status: 'AVAILABLE', statusColor: 'text-emerald-700 bg-emerald-50' },
-                { name: 'Engineering Annex', capacity: 50, occupied: 13, status: 'AVAILABLE', statusColor: 'text-emerald-700 bg-emerald-50' }
             ]
         },
         {
