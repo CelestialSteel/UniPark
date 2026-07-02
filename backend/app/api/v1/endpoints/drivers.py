@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_driver_user, get_admin_user
 from app.core.security import hash_password, verify_password
-from app.models import Driver, User, UserRole, Vehicle, VehicleLog, Infringement
+from app.models import Driver, User, UserRole, Vehicle, VehicleLog
 from app.schemas import (
     DriverProfileUpdateRequest,
     PasswordUpdateRequest,
@@ -184,54 +184,6 @@ async def list_driver_logs(
 
     return [serialize_driver_log(log) for log in logs]
 
-
-@router.get("/infringements", response_model=list[dict])
-async def list_driver_infringements(
-    current_user: User = Depends(get_driver_user),
-    db: Session = Depends(get_db),
-    skip: int = 0,
-    limit: int = 50,
-):
-    """List infringements for the authenticated driver."""
-
-    driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
-
-    if not driver:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Driver profile not found"
-        )
-
-    infringements = (
-        db.query(Infringement)
-        .filter(Infringement.driver_id == driver.id)
-        .order_by(Infringement.reported_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-    return [
-        {
-            "id": infringement.id,
-            "vehicle_id": infringement.vehicle_id,
-            "driver_id": infringement.driver_id,
-            "parking_zone_id": infringement.parking_zone_id,
-            "infringement_type": infringement.infringement_type,
-            "description": infringement.description,
-            "severity": infringement.severity,
-            "fine_amount": infringement.fine_amount,
-            "status": infringement.status,
-            "resolution_notes": infringement.resolution_notes,
-            "reported_at": infringement.reported_at,
-            "processed_at": infringement.processed_at,
-            "vehicle_registration": infringement.vehicle.registration_number if infringement.vehicle else None,
-            "driver_name": f"{infringement.driver.user.first_name or ''} {infringement.driver.user.last_name or ''}".strip() if infringement.driver and infringement.driver.user else None,
-            "parking_zone_name": infringement.parking_zone.zone_name if infringement.parking_zone else None,
-            "parking_zone_code": infringement.parking_zone.zone_code if infringement.parking_zone else None,
-        }
-        for infringement in infringements
-    ]
 
 
 @router.patch("/password", status_code=status.HTTP_200_OK)

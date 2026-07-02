@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, drivers, vehicles, parking_zones,
-    parking_spaces, vehicle_logs, infringements, alerts, notifications
+    parking_spaces, vehicle_logs, alerts, notifications
 )
 
 # Create main API router
@@ -16,6 +16,5 @@ api_router.include_router(vehicles.router, prefix="/vehicles", tags=["Vehicles"]
 api_router.include_router(parking_zones.router, prefix="/zones", tags=["Parking Zones"])
 api_router.include_router(parking_spaces.router, prefix="/spaces", tags=["Parking Spaces"])
 api_router.include_router(vehicle_logs.router, prefix="/logs", tags=["Vehicle Logs"])
-api_router.include_router(infringements.router, prefix="/infringements", tags=["Infringements"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])

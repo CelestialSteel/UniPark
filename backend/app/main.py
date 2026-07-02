@@ -7,6 +7,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.core.config import get_settings
 from app.core.logger import logger, get_logger
 from app.core.database import init_db
+from app.core.csrf import CSRFMiddleware
 from app.api.v1 import api_router
 
 settings = get_settings()
@@ -15,7 +16,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle app startup and shutdown"""
-    
+
     # Startup
     logger.info("Starting UniPark API...")
     if settings.SKIP_DB_INIT:
@@ -27,9 +28,9 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down UniPark API...")
 
@@ -46,14 +47,20 @@ app = FastAPI(
 )
 
 # Add middleware
+# Note: FastAPI applies middleware in reverse registration order (last added = outermost).
+# Actual request execution order: TrustedHost → CORS → CSRF → route handler
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "*"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    # X-CSRF-Token must be in allow_headers so preflight OPTIONS doesn't block it
+    allow_headers=[*settings.CORS_ALLOW_HEADERS, "X-CSRF-Token"],
+    # Expose it so JS can read it from response headers if needed
+    expose_headers=["X-CSRF-Token"],
 )
+app.add_middleware(CSRFMiddleware)
 
 # Include API routes
 app.include_router(api_router)
@@ -98,9 +105,9 @@ async def general_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     logger.info(f"Starting server on {settings.HOST}:{settings.PORT}")
-    
+
     uvicorn.run(
         "app.main:app",
         host=settings.HOST,

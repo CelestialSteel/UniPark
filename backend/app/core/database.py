@@ -58,7 +58,7 @@ def init_db():
         # Import all models to ensure they are registered
         from app.models import (
             User, Driver, Vehicle, ParkingZone, ParkingSpace,
-            VehicleLog, Alert, Infringement, Notification,
+            VehicleLog, Alert, Notification,
             Reservation, ZoneOccupancyHistory, AuditLog
         )
         

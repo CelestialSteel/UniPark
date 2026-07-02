@@ -1,5 +1,5 @@
 """FastAPI dependency injection for authentication and authorization"""
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -8,15 +8,29 @@ from app.models import User, UserRole
 import logging
 
 logger = logging.getLogger(__name__)
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get current authenticated user from JWT token"""
-    token = credentials.credentials
+    """Get current authenticated user from JWT cookie or Authorization header"""
+    token = None
+    
+    # Check cookies first
+    if request.cookies.get("access_token"):
+        token = request.cookies.get("access_token")
+    # Fallback to Authorization Header
+    elif credentials:
+        token = credentials.credentials
+        
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided"
+        )
     
     try:
         payload = decode_token(token)

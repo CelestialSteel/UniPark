@@ -1,16 +1,18 @@
 """Authentication Endpoints"""
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from app.core.database import get_db
 from app.core.security import hash_password, create_access_token, create_refresh_token, decode_token, verify_password
 from app.core.dependencies import get_current_user
+from app.core.config import get_settings
 from app.schemas import UserRegisterRequest, UserLoginRequest, TokenResponse, UserResponse
 from app.models import User, Driver, UserRole
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+settings = get_settings()
 
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
@@ -71,14 +73,14 @@ async def register(
     }
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 async def login(
     request: UserLoginRequest,
+    response: Response,
     db: Session = Depends(get_db)
 ):
-    """Login user and return tokens"""
+    """Login user and set secure HttpOnly cookies"""
     
-    # Find user by email
     user = db.query(User).filter(User.email == request.email).first()
     
     if not user or not verify_password(request.password, user.password_hash):
@@ -97,24 +99,46 @@ async def login(
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
-    logger.info(f"User logged in: {user.email}")
+    # Set cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=1800,  # 30 minutes
+        secure=settings.COOKIE_SECURE,
+        samesite="lax"
+    )
     
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=604800,  # 7 days
+        secure=settings.COOKIE_SECURE,
+        samesite="lax"
+    )
+    
+    logger.info(f"User logged in via cookies: {user.email}")
+    
+    # Return user details without token strings in body
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": 1800  # 30 minutes
+        "id": str(user.id),
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": user.role
     }
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 async def refresh_token(
-    request: dict,
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
-    """Refresh access token using refresh token"""
+    """Refresh access token using refresh token cookie"""
     
-    refresh_token_str = request.get("refresh_token")
+    refresh_token_str = request.cookies.get("refresh_token")
     
     if not refresh_token_str:
         raise HTTPException(
@@ -125,7 +149,6 @@ async def refresh_token(
     try:
         payload = decode_token(refresh_token_str)
         
-        # Verify it's a refresh token
         if payload.get("type") != "refresh":
             raise ValueError("Not a refresh token")
         
@@ -133,7 +156,6 @@ async def refresh_token(
         if not user_id:
             raise ValueError("Invalid refresh token")
         
-        # Verify user exists and is active
         user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.is_active:
             raise HTTPException(
@@ -141,17 +163,20 @@ async def refresh_token(
                 detail="User not found or inactive"
             )
         
-        # Create new access token
+        # Issue new access token
         access_token = create_access_token(data={"sub": str(user.id)})
         
-        logger.info(f"Token refreshed for user: {user.email}")
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            max_age=1800,
+            secure=settings.COOKIE_SECURE,
+            samesite="lax"
+        )
         
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token_str,  # Return same refresh token
-            "token_type": "bearer",
-            "expires_in": 1800
-        }
+        logger.info(f"Token refreshed via cookie for: {user.email}")
+        return {"status": "refreshed"}
     
     except Exception as e:
         logger.warning(f"Token refresh failed: {e}")
@@ -161,14 +186,16 @@ async def refresh_token(
         )
 
 
-@router.post("/logout", status_code=status.HTTP_200_OK)
+@router.post("/logout")
 async def logout(
+    response: Response,
     current_user: User = Depends(get_current_user)
 ):
-    """Logout user (client-side token discard)"""
+    """Logout user and delete cookies"""
     
-    logger.info(f"User logged out: {current_user.email}")
-    
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    logger.info(f"User logged out and cookies deleted: {current_user.email}")
     return {"message": "Logged out successfully"}
 
 
@@ -177,5 +204,4 @@ async def get_current_user_profile(
     current_user: User = Depends(get_current_user)
 ):
     """Get current user profile"""
-    
     return current_user

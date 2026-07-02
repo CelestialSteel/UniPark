@@ -3,55 +3,12 @@ import GuardFormModal from './GuardManagement/GuardFormModal';
 import GuardDeleteConfirm from './GuardManagement/GuardDeleteConfirm';
 import GuardStatusBadge from './GuardManagement/GuardStatusBadge';
 
-// ── API helpers ────────────────────────────────────────────────────────────────
-// Replace BASE_URL with your Django backend URL
-const BASE_URL = '/api';
-
-const api = {
-    getGuards: () => fetch(`${BASE_URL}/guards/`).then((r) => r.json()),
-    getLogs: (id) => fetch(`${BASE_URL}/guards/${id}/logs/`).then((r) => r.json()),
-    addGuard: (data) =>
-        fetch(`${BASE_URL}/guards/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        }).then(async (r) => {
-            if (!r.ok) throw new Error((await r.json()).detail || 'Failed to add guard');
-            return r.json();
-        }),
-    updateGuard: (id, data) =>
-        fetch(`${BASE_URL}/guards/${id}/`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        }).then(async (r) => {
-            if (!r.ok) throw new Error((await r.json()).detail || 'Failed to update guard');
-            return r.json();
-        }),
-    deleteGuard: (id) =>
-        fetch(`${BASE_URL}/guards/${id}/`, { method: 'DELETE' }).then(async (r) => {
-            if (!r.ok) throw new Error('Failed to remove guard');
-        }),
-};
-
-// ── Mock data (remove once backend is connected) ───────────────────────────────
-const MOCK_GUARDS = [
-    { id: 1, name: 'John Otieno', email: 'j.otieno@strathmore.edu', phone: '0712 345 678', shift: 'Day (6AM-2PM)', zone: 'Phase 1' },
-    { id: 2, name: 'Jane Mwangi', email: 'j.mwangi@strathmore.edu', phone: '0723 456 789', shift: 'Evening (2PM-10PM)', zone: 'Phase 2' },
-    { id: 3, name: 'Peter Kamau', email: 'p.kamau@strathmore.edu', phone: '0734 567 890', shift: 'Night (10PM-6AM)', zone: 'Business School' },
-];
-
-const MOCK_LOGS = [
-    { id: 1, guard_name: 'John Otieno', action: 'Logged vehicle KAA 123A — Entry', timestamp: '2025-06-30 08:14' },
-    { id: 2, guard_name: 'Jane Mwangi', action: 'Flagged overstay — KBZ 456B', timestamp: '2025-06-30 09:02' },
-    { id: 3, guard_name: 'John Otieno', action: 'Logged vehicle KCA 789C — Exit', timestamp: '2025-06-30 09:45' },
-    { id: 4, guard_name: 'Peter Kamau', action: 'Logged vehicle KDB 012D — Entry', timestamp: '2025-06-30 22:10' },
-];
+import { uniparkApi } from '../../../utils/uniparkApi';
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function GuardManagementPage() {
-    const [guards, setGuards] = useState(MOCK_GUARDS);
-    const [logs, setLogs] = useState(MOCK_LOGS);
+    const [guards, setGuards] = useState([]);
+    const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [activeTab, setActiveTab] = useState('guards'); // 'guards' | 'activity'
@@ -61,11 +18,29 @@ export default function GuardManagementPage() {
     const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'delete' | null
     const [selectedGuard, setSelectedGuard] = useState(null);
 
-    // ── Fetch guards on mount (swap mock for real API when ready) ──────────────
+    const fetchGuards = async () => {
+        setLoading(true);
+        try {
+            const data = await uniparkApi.getGuards();
+            const mapped = data.map(g => ({
+                id: String(g.id),   // normalise to plain UUID string – backend path param is UUID type
+                name: `${g.first_name} ${g.last_name}`,
+                email: g.email,
+                phone: g.phone_number || '',
+                shift: 'Day (6AM-2PM)', // Shift metadata isn't stored in DB model yet, defaults to Day
+                zone: 'Phase 1',       // Assigned zone metadata defaults to Phase 1
+            }));
+            setGuards(mapped);
+        } catch (error) {
+            console.error('Error fetching guards:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ── Fetch guards on mount ──────────────────────────────────────────────────
     useEffect(() => {
-        // Uncomment when backend is ready:
-        // setLoading(true);
-        // api.getGuards().then(setGuards).finally(() => setLoading(false));
+        fetchGuards();
     }, []);
 
     // ── Handlers ───────────────────────────────────────────────────────────────
@@ -75,21 +50,31 @@ export default function GuardManagementPage() {
     const closeModal = () => { setModalMode(null); setSelectedGuard(null); };
 
     const handleSave = async (formData) => {
+        const spaceIdx = formData.name.indexOf(' ');
+        const firstName = spaceIdx !== -1 ? formData.name.substring(0, spaceIdx) : formData.name;
+        const lastName = spaceIdx !== -1 ? formData.name.substring(spaceIdx + 1) : '';
+
         if (modalMode === 'add') {
-            // Uncomment for real API: const newGuard = await api.addGuard(formData);
-            const newGuard = { ...formData, id: Date.now() }; // mock
-            setGuards((prev) => [...prev, newGuard]);
+            await uniparkApi.addGuard({
+                email: formData.email,
+                password: 'SecurityGuard123!', // Default temporary password
+                first_name: firstName || 'Guard',
+                last_name: lastName || 'Officer',
+                phone_number: formData.phone
+            });
         } else if (modalMode === 'edit') {
-            // Uncomment for real API: const updated = await api.updateGuard(selectedGuard.id, formData);
-            setGuards((prev) =>
-                prev.map((g) => (g.id === selectedGuard.id ? { ...g, ...formData } : g))
-            );
+            await uniparkApi.updateGuard(selectedGuard.id, {
+                first_name: firstName,
+                last_name: lastName,
+                phone_number: formData.phone
+            });
         }
+        await fetchGuards();
     };
 
     const handleDelete = async (id) => {
-        // Uncomment for real API: await api.deleteGuard(id);
-        setGuards((prev) => prev.filter((g) => g.id !== id));
+        await uniparkApi.deleteGuard(id);
+        await fetchGuards();
     };
 
     // ── Filtered lists ─────────────────────────────────────────────────────────

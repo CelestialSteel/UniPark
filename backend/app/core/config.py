@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Cookies
+    # Set to True in any HTTPS/production environment to prevent token leakage over HTTP.
+    # Keep False for local development (HTTP only).
+    COOKIE_SECURE: bool = False
     
     # CORS
     CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]

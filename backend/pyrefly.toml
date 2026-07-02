@@ -1,0 +1,12 @@
+# Pyrefly configuration for UniPark backend
+# Points Pyrefly to the project virtual environment
+python_interpreter = ".venv/Scripts/python.exe"
+
+[errors]
+# SQLAlchemy ORM attributes (Column[T]) accept plain Python values at runtime.
+# Pyrefly does not model SQLAlchemy's descriptor protocol, so it incorrectly
+# reports assignments like `model.column = str_value` as type errors.
+# Suppress these known false-positive categories:
+bad-argument-type = false
+bad-assignment = false
+deprecated = false

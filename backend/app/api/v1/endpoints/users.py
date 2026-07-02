@@ -2,6 +2,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from uuid import UUID
+from pydantic import BaseModel
+from typing import Optional
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_admin_user
 from app.schemas import UserResponse
@@ -65,22 +67,25 @@ async def list_users(
     return users
 
 
+class UserUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+
 @router.patch("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: UUID,
-    first_name: str = None,
-    last_name: str = None,
-    phone_number: str = None,
+    request: UserUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update user profile (self only)"""
+    """Update user profile (self or admin)"""
     
-    # Users can only update their own profile
-    if current_user.id != user_id:
+    # Users can only update their own profile unless they are admin
+    if current_user.role != UserRole.ADMIN and current_user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own profile"
+            detail="You do not have permission to update this profile"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -92,12 +97,12 @@ async def update_user(
         )
     
     # Update fields if provided
-    if first_name:
-        user.first_name = first_name
-    if last_name:
-        user.last_name = last_name
-    if phone_number:
-        user.phone_number = phone_number
+    if request.first_name is not None:
+        user.first_name = request.first_name
+    if request.last_name is not None:
+        user.last_name = request.last_name
+    if request.phone_number is not None:
+        user.phone_number = request.phone_number
     
     db.commit()
     db.refresh(user)
@@ -105,6 +110,7 @@ async def update_user(
     logger.info(f"User profile updated: {user.email}")
     
     return user
+
 
 
 @router.post("/{user_id}/deactivate", status_code=status.HTTP_200_OK)

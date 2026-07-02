@@ -255,46 +255,6 @@ class VehicleLogResponse(BaseModel):
         from_attributes = True
 
 
-# ==================== INFRINGEMENT SCHEMAS ====================
-
-class InfringementCreateRequest(BaseModel):
-    """Create infringement request"""
-    vehicle_id: UUID
-    parking_zone_id: Optional[UUID] = None
-    infringement_type: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    severity: str = "minor"  # minor, major, critical
-    fine_amount: float = 0.0
-
-
-class InfringementUpdateRequest(BaseModel):
-    """Update infringement request"""
-    status: str
-    resolution_notes: Optional[str] = None
-
-
-class InfringementResponse(BaseModel):
-    """Infringement response"""
-    id: UUID
-    vehicle_id: UUID
-    driver_id: UUID
-    parking_zone_id: Optional[UUID] = None
-    infringement_type: str
-    description: Optional[str] = None
-    severity: str
-    fine_amount: float
-    status: str
-    resolution_notes: Optional[str] = None
-    reported_at: datetime
-    processed_at: Optional[datetime] = None
-    vehicle_registration: Optional[str] = None
-    driver_name: Optional[str] = None
-    parking_zone_name: Optional[str] = None
-    parking_zone_code: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
-
 
 # ==================== ALERT SCHEMAS ====================
 
@@ -332,7 +292,6 @@ class NotificationResponse(BaseModel):
     message: str
     is_read: bool
     read_at: Optional[datetime] = None
-    related_infringement_id: Optional[UUID] = None
     created_at: datetime
     
     class Config:

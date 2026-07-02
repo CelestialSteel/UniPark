@@ -1,5 +1,5 @@
 """SQLAlchemy ORM Models"""
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, ForeignKey, Text, Enum, func, Index, CheckConstraint
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, ForeignKey, Text, Enum, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
@@ -37,15 +37,6 @@ class ZoneStatus(str, enum.Enum):
     INACTIVE = "inactive"
 
 
-class InfringementStatus(str, enum.Enum):
-    """Infringement status"""
-    REPORTED = "reported"
-    UNDER_REVIEW = "under_review"
-    RESOLVED = "resolved"
-    DISMISSED = "dismissed"
-    APPEALED = "appealed"
-
-
 class VehicleEntryStatus(str, enum.Enum):
     """Vehicle entry/exit status"""
     ENTERED = "entered"
@@ -55,7 +46,6 @@ class VehicleEntryStatus(str, enum.Enum):
 
 class NotificationType(str, enum.Enum):
     """Notification type"""
-    INFRINGEMENT = "infringement"
     ALERT = "alert"
     SYSTEM = "system"
     RESERVATION = "reservation"
@@ -68,7 +58,7 @@ class User(Base):
         Index("idx_users_email", "email"),
         Index("idx_users_role", "role"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
@@ -79,7 +69,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     driver_profile = relationship("Driver", back_populates="user", uselist=False)
     vehicles_registered = relationship("Vehicle", foreign_keys="Vehicle.registered_by_user_id")
@@ -96,7 +86,7 @@ class Driver(Base):
         Index("idx_drivers_student_id", "student_id"),
         Index("idx_drivers_license_number", "license_number"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     student_id = Column(String(50), nullable=True, unique=True)
@@ -106,12 +96,11 @@ class Driver(Base):
     license_expiry = Column(DateTime, nullable=True)
     department = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="driver_profile")
     vehicles = relationship("Vehicle", back_populates="driver")
     vehicle_logs = relationship("VehicleLog", back_populates="driver")
-    infringements = relationship("Infringement", back_populates="driver")
 
 
 class Vehicle(Base):
@@ -121,7 +110,7 @@ class Vehicle(Base):
         Index("idx_vehicles_registration_number", "registration_number"),
         Index("idx_vehicles_driver_id", "driver_id"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id", ondelete="CASCADE"))
     registration_number = Column(String(50), nullable=False, unique=True)
@@ -134,11 +123,10 @@ class Vehicle(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     driver = relationship("Driver", back_populates="vehicles")
     vehicle_logs = relationship("VehicleLog", back_populates="vehicle")
-    infringements = relationship("Infringement", back_populates="vehicle")
 
 
 class ParkingZone(Base):
@@ -148,7 +136,7 @@ class ParkingZone(Base):
         Index("idx_zones_zone_code", "zone_code"),
         Index("idx_zones_status", "status"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     zone_name = Column(String(100), nullable=False)
     zone_code = Column(String(20), nullable=False, unique=True)
@@ -162,11 +150,10 @@ class ParkingZone(Base):
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     spaces = relationship("ParkingSpace", back_populates="zone", cascade="all, delete-orphan")
     vehicle_logs = relationship("VehicleLog", back_populates="parking_zone")
-    infringements = relationship("Infringement", back_populates="parking_zone")
     alerts = relationship("Alert", back_populates="parking_zone")
     occupancy_history = relationship("ZoneOccupancyHistory", back_populates="parking_zone")
 
@@ -179,7 +166,7 @@ class ParkingSpace(Base):
         Index("idx_spaces_status", "status"),
         Index("idx_spaces_zone_space", "zone_id", "space_number"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id", ondelete="CASCADE"))
     space_number = Column(String(20), nullable=False)
@@ -189,7 +176,7 @@ class ParkingSpace(Base):
     cordoned_reason = Column(Text)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     zone = relationship("ParkingZone", back_populates="spaces")
     vehicle_logs = relationship("VehicleLog", back_populates="parking_space")
@@ -203,7 +190,7 @@ class VehicleLog(Base):
         Index("idx_logs_driver_id", "driver_id"),
         Index("idx_logs_entry_time", "entry_time"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"))
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
@@ -215,7 +202,7 @@ class VehicleLog(Base):
     duration_minutes = Column(Integer, nullable=True)
     recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     vehicle = relationship("Vehicle", back_populates="vehicle_logs")
     driver = relationship("Driver", back_populates="vehicle_logs")
@@ -230,7 +217,7 @@ class Alert(Base):
         Index("idx_alerts_zone_id", "parking_zone_id"),
         Index("idx_alerts_active", "is_active"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     alert_type = Column(String(50), nullable=False)
@@ -242,39 +229,9 @@ class Alert(Base):
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     resolved_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     parking_zone = relationship("ParkingZone", back_populates="alerts")
-
-
-class Infringement(Base):
-    """Parking infringement model"""
-    __tablename__ = "infringements"
-    __table_args__ = (
-        Index("idx_infringements_driver_id", "driver_id"),
-        Index("idx_infringements_vehicle_id", "vehicle_id"),
-        Index("idx_infringements_status", "status"),
-    )
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"))
-    driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
-    parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"), nullable=True)
-    infringement_type = Column(String(100), nullable=False)
-    description = Column(Text)
-    severity = Column(String(20))  # minor, major, critical
-    fine_amount = Column(Float, default=0.0)
-    status = Column(Enum(InfringementStatus, values_callable=enum_values), default=InfringementStatus.REPORTED)
-    resolution_notes = Column(Text)
-    reported_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    processed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    reported_at = Column(DateTime, default=datetime.utcnow)
-    processed_at = Column(DateTime, nullable=True)
-    
-    # Relationships
-    vehicle = relationship("Vehicle", back_populates="infringements")
-    driver = relationship("Driver", back_populates="infringements")
-    parking_zone = relationship("ParkingZone", back_populates="infringements")
 
 
 class Notification(Base):
@@ -284,7 +241,7 @@ class Notification(Base):
         Index("idx_notifications_recipient_id", "recipient_user_id"),
         Index("idx_notifications_read", "is_read"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     recipient_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     notification_type = Column(Enum(NotificationType, values_callable=enum_values), default=NotificationType.SYSTEM)
@@ -292,9 +249,8 @@ class Notification(Base):
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
     read_at = Column(DateTime, nullable=True)
-    related_infringement_id = Column(UUID(as_uuid=True), ForeignKey("infringements.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     recipient_user = relationship("User", back_populates="notifications")
 
@@ -306,7 +262,7 @@ class Reservation(Base):
         Index("idx_reservations_driver_id", "driver_id"),
         Index("idx_reservations_space_id", "parking_space_id"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
     parking_space_id = Column(UUID(as_uuid=True), ForeignKey("parking_spaces.id"))
@@ -323,7 +279,7 @@ class ZoneOccupancyHistory(Base):
         Index("idx_occupancy_zone_id", "parking_zone_id"),
         Index("idx_occupancy_timestamp", "recorded_at"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     total_spaces = Column(Integer)
@@ -331,7 +287,7 @@ class ZoneOccupancyHistory(Base):
     available_spaces = Column(Integer)
     occupancy_percentage = Column(Float)
     recorded_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     parking_zone = relationship("ParkingZone", back_populates="occupancy_history")
 
@@ -343,7 +299,7 @@ class AuditLog(Base):
         Index("idx_audit_user_id", "user_id"),
         Index("idx_audit_timestamp", "timestamp"),
     )
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     action = Column(String(100), nullable=False)

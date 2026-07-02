@@ -26,6 +26,16 @@ export default function AnalyticsTab({ zones, logs, reservations, overstayLogs, 
         { label: 'Overstay Alerts', value: overstayLogs.length, color: 'from-amber-500 to-orange-600', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
     ];
 
+    const metrics = React.useMemo(() => {
+        const total = zones.reduce((sum, z) => sum + z.total, 0);
+        const occupied = zones.reduce((sum, z) => sum + z.occupied, 0);
+        const reserved = zones.reduce((sum, z) => sum + z.reserved, 0);
+        const cordoned = zones.reduce((sum, z) => sum + z.cordoned, 0);
+        const available = total - occupied - reserved - cordoned;
+        const occupancyRate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+        return { total, occupied, reserved, cordoned, available, occupancyRate };
+    }, [zones]);
+
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
@@ -34,7 +44,7 @@ export default function AnalyticsTab({ zones, logs, reservations, overstayLogs, 
                     <p className="text-gray-500 mt-1">Download exportable CSV reports for all campus parking data.</p>
                 </div>
                 <button
-                    onClick={() => printAnalyticsPDF({ zones, logs, reservations, overstayLogs })}
+                    onClick={() => printAnalyticsPDF(metrics, zones)}
                     className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 cursor-pointer transition"
                 >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

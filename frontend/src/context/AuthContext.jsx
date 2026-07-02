@@ -5,6 +5,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const TOKEN_STORAGE_KEY = 'unipark_auth_tokens';
 const USER_STORAGE_KEY = 'unipark_user';
 
+/**
+ * Reads the csrf_token cookie set by the backend CSRF middleware.
+ * The cookie is NOT HttpOnly by design so JS can echo it in X-CSRF-Token.
+ */
+function getCsrfToken() {
+    const match = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('csrf_token='));
+    return match ? decodeURIComponent(match.split('=')[1]) : null;
+}
+
 function toFrontendRole(role) {
     return role === 'security' ? 'guard' : role;
 }
@@ -94,7 +105,6 @@ export function AuthProvider({ children }) {
             setRole(parsedUser.role);
         } catch {
             localStorage.removeItem(USER_STORAGE_KEY);
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
         }
     }, []);
 
@@ -102,9 +112,16 @@ export function AuthProvider({ children }) {
         setIsLoading(true);
         setError(null);
         try {
+            const csrfToken = getCsrfToken();
             const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    // login is CSRF-exempt on the backend (no cookie yet),
+                    // but we attach if available for forward-compatibility
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+                },
+                credentials: 'include',
                 body: JSON.stringify({ email, password }),
             });
 
@@ -112,16 +129,7 @@ export function AuthProvider({ children }) {
                 throw new Error(await parseApiError(response));
             }
 
-            const tokens = await response.json();
-            const profileResponse = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-                headers: { Authorization: `Bearer ${tokens.access_token}` },
-            });
-
-            if (!profileResponse.ok) {
-                throw new Error(await parseApiError(profileResponse));
-            }
-
-            const apiUser = await profileResponse.json();
+            const apiUser = await response.json();
             const userData = formatUser(apiUser);
             const expectedRole = toBackendRole(selectedRole);
 
@@ -129,7 +137,6 @@ export function AuthProvider({ children }) {
                 throw new Error(`This account is registered as ${toFrontendRole(apiUser.role)}, not ${selectedRole}.`);
             }
 
-            localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokens));
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
             setUser(userData);
             setRole(userData.role);
@@ -137,7 +144,6 @@ export function AuthProvider({ children }) {
         } catch (err) {
             const demoUser = getDemoUser(email, password, selectedRole);
             if (demoUser) {
-                localStorage.removeItem(TOKEN_STORAGE_KEY);
                 localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(demoUser));
                 setUser(demoUser);
                 setRole(demoUser.role);
@@ -158,9 +164,16 @@ export function AuthProvider({ children }) {
 
         try {
             const [firstName, ...lastNameParts] = fullName.trim().split(/\s+/);
+            const csrfToken = getCsrfToken();
             const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    // register is CSRF-exempt on the backend (pre-auth),
+                    // but we attach if available for forward-compatibility
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+                },
+                credentials: 'include',
                 body: JSON.stringify({
                     email,
                     password,
@@ -185,8 +198,19 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+    const logout = async () => {
+        try {
+            const csrfToken = getCsrfToken();
+            await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+                },
+            });
+        } catch (e) {
+            console.error('Logout request failed:', e);
+        }
         localStorage.removeItem(USER_STORAGE_KEY);
         setUser(null);
         setRole(null);
