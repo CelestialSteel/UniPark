@@ -62,20 +62,27 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole, values_callable=enum_values), nullable=False, default=UserRole.DRIVER)
+    role = Column(Enum(UserRole, values_callable=enum_values),
+                  nullable=False, default=UserRole.DRIVER)
     first_name = Column(String(100))
     last_name = Column(String(100))
     phone_number = Column(String(20))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     # Relationships
-    driver_profile = relationship("Driver", back_populates="user", uselist=False)
-    vehicles_registered = relationship("Vehicle", foreign_keys="Vehicle.registered_by_user_id")
-    notifications = relationship("Notification", back_populates="recipient_user")
-    created_zones = relationship("ParkingZone", foreign_keys="ParkingZone.created_by_user_id")
-    created_spaces = relationship("ParkingSpace", foreign_keys="ParkingSpace.created_by_user_id")
+    driver_profile = relationship(
+        "Driver", back_populates="user", uselist=False)
+    vehicles_registered = relationship(
+        "Vehicle", foreign_keys="Vehicle.registered_by_user_id")
+    notifications = relationship(
+        "Notification", back_populates="recipient_user")
+    created_zones = relationship(
+        "ParkingZone", foreign_keys="ParkingZone.created_by_user_id")
+    created_spaces = relationship(
+        "ParkingSpace", foreign_keys="ParkingSpace.created_by_user_id")
 
 
 class Driver(Base):
@@ -88,7 +95,8 @@ class Driver(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey(
+        "users.id", ondelete="CASCADE"), unique=True)
     student_id = Column(String(50), nullable=True, unique=True)
     faculty_id = Column(String(50), nullable=True, unique=True)
     staff_id = Column(String(50), nullable=True, unique=True)
@@ -112,7 +120,8 @@ class Vehicle(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id", ondelete="CASCADE"))
+    driver_id = Column(UUID(as_uuid=True), ForeignKey(
+        "drivers.id", ondelete="CASCADE"))
     registration_number = Column(String(50), nullable=False, unique=True)
     make = Column(String(100))
     model = Column(String(100))
@@ -122,11 +131,14 @@ class Vehicle(Base):
     is_primary = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     # Relationships
     driver = relationship("Driver", back_populates="vehicles")
     vehicle_logs = relationship("VehicleLog", back_populates="vehicle")
+    unlink_events = relationship(
+        "VehicleUnlinkEvent", back_populates="vehicle")
 
 
 class ParkingZone(Base):
@@ -146,16 +158,20 @@ class ParkingZone(Base):
     reserved_spaces = Column(Integer, default=0)
     cordoned_spaces = Column(Integer, default=0)
     maintenance_spaces = Column(Integer, default=0)
-    status = Column(Enum(ZoneStatus, values_callable=enum_values), default=ZoneStatus.ACTIVE)
+    status = Column(Enum(ZoneStatus, values_callable=enum_values),
+                    default=ZoneStatus.ACTIVE)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     # Relationships
-    spaces = relationship("ParkingSpace", back_populates="zone", cascade="all, delete-orphan")
+    spaces = relationship(
+        "ParkingSpace", back_populates="zone", cascade="all, delete-orphan")
     vehicle_logs = relationship("VehicleLog", back_populates="parking_zone")
     alerts = relationship("Alert", back_populates="parking_zone")
-    occupancy_history = relationship("ZoneOccupancyHistory", back_populates="parking_zone")
+    occupancy_history = relationship(
+        "ZoneOccupancyHistory", back_populates="parking_zone")
 
 
 class ParkingSpace(Base):
@@ -168,11 +184,15 @@ class ParkingSpace(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id", ondelete="CASCADE"))
+    zone_id = Column(UUID(as_uuid=True), ForeignKey(
+        "parking_zones.id", ondelete="CASCADE"))
     space_number = Column(String(20), nullable=False)
-    status = Column(Enum(ParkingSpaceStatus, values_callable=enum_values), default=ParkingSpaceStatus.AVAILABLE)
-    reserved_for_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    currently_occupied_by_vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
+    status = Column(Enum(ParkingSpaceStatus, values_callable=enum_values),
+                    default=ParkingSpaceStatus.AVAILABLE)
+    reserved_for_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    currently_occupied_by_vehicle_id = Column(
+        UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
     cordoned_reason = Column(Text)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -194,13 +214,17 @@ class VehicleLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"))
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
-    parking_space_id = Column(UUID(as_uuid=True), ForeignKey("parking_spaces.id"), nullable=True)
-    parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
-    status = Column(Enum(VehicleEntryStatus, values_callable=enum_values), default=VehicleEntryStatus.ENTERED)
+    parking_space_id = Column(UUID(as_uuid=True), ForeignKey(
+        "parking_spaces.id"), nullable=True)
+    parking_zone_id = Column(
+        UUID(as_uuid=True), ForeignKey("parking_zones.id"))
+    status = Column(Enum(VehicleEntryStatus, values_callable=enum_values),
+                    default=VehicleEntryStatus.ENTERED)
     entry_time = Column(DateTime, nullable=False)
     exit_time = Column(DateTime, nullable=True)
     duration_minutes = Column(Integer, nullable=True)
-    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    recorded_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -219,7 +243,8 @@ class Alert(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
+    parking_zone_id = Column(
+        UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     alert_type = Column(String(50), nullable=False)
     message = Column(Text, nullable=False)
     severity = Column(String(20))  # low, medium, high
@@ -227,7 +252,8 @@ class Alert(Base):
     resolved_at = Column(DateTime, nullable=True)
     resolved_notes = Column(Text)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    resolved_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    resolved_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -243,8 +269,10 @@ class Notification(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    recipient_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    notification_type = Column(Enum(NotificationType, values_callable=enum_values), default=NotificationType.SYSTEM)
+    recipient_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    notification_type = Column(Enum(
+        NotificationType, values_callable=enum_values), default=NotificationType.SYSTEM)
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
@@ -265,7 +293,8 @@ class Reservation(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
-    parking_space_id = Column(UUID(as_uuid=True), ForeignKey("parking_spaces.id"))
+    parking_space_id = Column(
+        UUID(as_uuid=True), ForeignKey("parking_spaces.id"))
     reservation_date = Column(DateTime, nullable=False)
     expiry_time = Column(DateTime, nullable=False)
     is_active = Column(Boolean, default=True)
@@ -281,7 +310,8 @@ class ZoneOccupancyHistory(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    parking_zone_id = Column(UUID(as_uuid=True), ForeignKey("parking_zones.id"))
+    parking_zone_id = Column(
+        UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     total_spaces = Column(Integer)
     occupied_spaces = Column(Integer)
     available_spaces = Column(Integer)
@@ -289,7 +319,8 @@ class ZoneOccupancyHistory(Base):
     recorded_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    parking_zone = relationship("ParkingZone", back_populates="occupancy_history")
+    parking_zone = relationship(
+        "ParkingZone", back_populates="occupancy_history")
 
 
 class AuditLog(Base):
@@ -309,3 +340,26 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class VehicleUnlinkEvent(Base):
+    """Tracks why a driver unlinked a vehicle."""
+    __tablename__ = "vehicle_unlink_events"
+    __table_args__ = (
+        Index("idx_vehicle_unlink_events_vehicle_id", "vehicle_id"),
+        Index("idx_vehicle_unlink_events_driver_id", "driver_id"),
+        Index("idx_vehicle_unlink_events_unlinked_at", "unlinked_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey(
+        "vehicles.id"), nullable=False)
+    driver_id = Column(UUID(as_uuid=True), ForeignKey(
+        "drivers.id"), nullable=False)
+    unlinked_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reason = Column(String(120), nullable=False)
+    details = Column(Text, nullable=True)
+    unlinked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    vehicle = relationship("Vehicle", back_populates="unlink_events")

@@ -55,6 +55,7 @@ export const uniparkApi = {
     getDriverProfile: () => requestJson('/api/v1/drivers/profile'),
     updateDriverProfile: (payload) => requestJson('/api/v1/drivers/profile', { method: 'PATCH', body: payload }),
     getDriverVehicles: () => requestJson('/api/v1/drivers/vehicles'),
+    unlinkDriverVehicle: (vehicleId, payload) => requestJson(`/api/v1/vehicles/${vehicleId}/unlink`, { method: 'POST', body: payload }),
     getDriverLogs: (params = {}) => {
         const query = new URLSearchParams();
         if (params.skip !== undefined) {
@@ -74,7 +75,7 @@ export const uniparkApi = {
     createSpaceReservation: (id, payload) => requestJson(`/api/v1/spaces/${id}/reserve`, { method: 'POST', body: payload }),
     createSpaceCordone: (id, payload) => requestJson(`/api/v1/spaces/${id}/cordone`, { method: 'POST', body: payload }),
     getAnalyticsDashboard: () => requestJson('/api/v1/analytics/dashboard'),
-    
+
     // Guard Management API methods
     getGuards: () => requestJson('/api/v1/users?role=security'),
     addGuard: (payload) => requestJson('/api/v1/auth/register', { method: 'POST', body: { ...payload, role: 'security' } }),

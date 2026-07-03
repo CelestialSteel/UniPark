@@ -59,9 +59,10 @@ def init_db():
         from app.models import (
             User, Driver, Vehicle, ParkingZone, ParkingSpace,
             VehicleLog, Alert, Notification,
-            Reservation, ZoneOccupancyHistory, AuditLog
+            Reservation, ZoneOccupancyHistory, AuditLog,
+            VehicleUnlinkEvent
         )
-        
+
         # Create all tables
         from app.models import Base
         Base.metadata.create_all(bind=engine)

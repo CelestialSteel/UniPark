@@ -3,38 +3,54 @@ import { ASSETS } from '../../../constants/assets';
 import { uniparkApi } from '../../../utils/uniparkApi';
 
 function buildSegments(zones) {
-    const groups = [
+    const mainGroups = [
         {
             id: 'phase1',
-            name: 'Low Traffic',
-            description: 'Zones with room to spare',
+            name: 'Phase 1',
+            description: 'Main zone',
+            sourceNames: ['Phase 1'],
+            subZoneNames: ['Phase 1'],
             occupancy: 0,
             badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100',
             subZones: [],
         },
         {
             id: 'phase2',
-            name: 'Moderate Traffic',
-            description: 'Zones that are filling up',
+            name: 'Phase 2',
+            description: 'Main zone with smaller lots',
+            sourceNames: ['Phase 2'],
+            subZoneNames: ['Library Lot', 'Graduation Square', 'MSB Lot', 'Engineering Lot', 'Gate E Lot'],
             occupancy: 0,
             badgeColor: 'bg-amber-50 text-amber-700 border-amber-100',
             subZones: [],
         },
         {
+            id: 'sbs',
+            name: 'SBS Lot',
+            description: 'Main zone',
+            sourceNames: ['SBS Lot'],
+            subZoneNames: ['SBS Lot'],
+            occupancy: 0,
+            badgeColor: 'bg-sky-50 text-sky-700 border-sky-100',
+            subZones: [],
+        },
+        {
             id: 'sports',
-            name: 'High Traffic',
-            description: 'Zones nearing capacity',
+            name: 'Sports Complex Lot',
+            description: 'Main zone',
+            sourceNames: ['Sports Complex Lot'],
+            subZoneNames: ['Sports Complex Lot'],
             occupancy: 0,
             badgeColor: 'bg-red-50 text-red-700 border-red-100',
             subZones: [],
         },
     ];
 
-    zones.forEach((zone) => {
-        const occupancy = Number(zone.occupancy_percentage || 0);
-        const targetGroup = occupancy >= 75 ? groups[2] : occupancy >= 40 ? groups[1] : groups[0];
+    const zoneByName = new Map(zones.map((zone) => [zone.zone_name.toLowerCase(), zone]));
 
-        targetGroup.subZones.push({
+    const toSubZone = (zone) => {
+        const occupancy = Number(zone.occupancy_percentage || 0);
+        return {
             name: zone.zone_name,
             code: zone.zone_code,
             capacity: zone.total_spaces,
@@ -50,23 +66,35 @@ function buildSegments(zones) {
                 : occupancy >= 40
                     ? 'text-amber-700 bg-amber-50'
                     : 'text-emerald-700 bg-emerald-50',
-        });
-    });
+        };
+    };
 
-    groups.forEach((group) => {
-        if (group.subZones.length > 0) {
+    mainGroups.forEach((group) => {
+        const mainZone = group.sourceNames
+            .map((name) => zoneByName.get(name.toLowerCase()))
+            .find(Boolean);
+
+        group.subZones = group.subZoneNames
+            .map((name) => zoneByName.get(name.toLowerCase()))
+            .filter(Boolean)
+            .map(toSubZone);
+
+        if (mainZone) {
+            group.occupancy = Math.round(Number(mainZone.occupancy_percentage || 0));
+        } else if (group.subZones.length > 0) {
             const averageOccupancy = group.subZones.reduce((sum, zone) => sum + zone.occupancy, 0) / group.subZones.length;
             group.occupancy = Math.round(averageOccupancy);
         }
     });
 
-    return groups;
+    return mainGroups;
 }
 
 export default function DriverZonesTab() {
     const [expandedSegments, setExpandedSegments] = useState({
         'phase1': false,
-        'phase2': true, // Expanded by default in mockup
+        'phase2': true,
+        'sbs': false,
         'sports': false
     });
 
@@ -120,7 +148,7 @@ export default function DriverZonesTab() {
                 <h1 className="text-2xl font-bold text-slate-800">Campus Parking Zones</h1>
                 <div className="flex gap-2">
                     {/* Mock Filter Trigger */}
-                    <button 
+                    <button
                         onClick={() => alert('Filter applied: showing all active zones.')}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
                     >
@@ -169,6 +197,11 @@ export default function DriverZonesTab() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                             </svg>
                                         )}
+                                        {seg.id === 'sbs' && (
+                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                                            </svg>
+                                        )}
                                         {seg.id === 'sports' && (
                                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
@@ -183,16 +216,15 @@ export default function DriverZonesTab() {
 
                                 <div className="flex items-center gap-3">
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${seg.badgeColor}`}>
-                                        <span className={`h-1.5 w-1.5 rounded-full ${
-                                            seg.occupancy >= 90 ? 'bg-red-500 animate-pulse' :
-                                            seg.occupancy >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
-                                        }`} />
+                                        <span className={`h-1.5 w-1.5 rounded-full ${seg.occupancy >= 90 ? 'bg-red-500 animate-pulse' :
+                                                seg.occupancy >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                                            }`} />
                                         {seg.occupancy}% Occupancy
                                     </span>
-                                    <svg 
+                                    <svg
                                         className={`h-4 w-4 text-slate-400 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                                        fill="none" 
-                                        stroke="currentColor" 
+                                        fill="none"
+                                        stroke="currentColor"
                                         viewBox="0 0 24 24"
                                     >
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
@@ -227,11 +259,10 @@ export default function DriverZonesTab() {
                                                             <div className="flex items-center gap-3">
                                                                 <span className="font-semibold text-slate-700 min-w-[70px]">{sub.occupied} spots</span>
                                                                 <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden hidden sm:block">
-                                                                    <div 
-                                                                        className={`h-full rounded-full ${
-                                                                            fillPercent >= 90 ? 'bg-red-500' :
-                                                                            fillPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                                        }`}
+                                                                    <div
+                                                                        className={`h-full rounded-full ${fillPercent >= 90 ? 'bg-red-500' :
+                                                                                fillPercent >= 60 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                                            }`}
                                                                         style={{ width: `${fillPercent}%` }}
                                                                     />
                                                                 </div>
@@ -243,7 +274,7 @@ export default function DriverZonesTab() {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <button 
+                                                            <button
                                                                 onClick={() => setSelectedZone(sub)}
                                                                 className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                                                             >
@@ -277,9 +308,9 @@ export default function DriverZonesTab() {
                     </svg>
                 </div>
                 <div className="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center p-2">
-                    <img 
-                        src={ASSETS.campusMap} 
-                        alt="UniPark Campus 3D Isometric Map" 
+                    <img
+                        src={ASSETS.campusMap}
+                        alt="UniPark Campus 3D Isometric Map"
                         className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm"
                     />
                 </div>
@@ -290,7 +321,7 @@ export default function DriverZonesTab() {
                 <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setSelectedZone(null)} />
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm border border-slate-100 overflow-hidden relative z-10 p-6 animate-in fade-in zoom-in duration-150">
-                        <button 
+                        <button
                             onClick={() => setSelectedZone(null)}
                             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-full hover:bg-slate-100"
                         >
@@ -323,7 +354,7 @@ export default function DriverZonesTab() {
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => setSelectedZone(null)}
                             className="w-full bg-slate-900 text-white rounded-xl py-2.5 text-xs font-semibold hover:bg-slate-800 transition cursor-pointer"
                         >

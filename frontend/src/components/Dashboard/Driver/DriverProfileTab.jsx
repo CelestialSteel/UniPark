@@ -39,11 +39,10 @@ function Field({ label, value, name, readOnly = false, options = null, onChange 
                     value={value}
                     onChange={onChange}
                     readOnly={readOnly}
-                    className={`w-full rounded-xl border px-4 py-2.5 text-sm shadow-xs outline-none transition focus:ring-2 focus:ring-blue-100 ${
-                        readOnly 
-                            ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400' 
+                    className={`w-full rounded-xl border px-4 py-2.5 text-sm shadow-xs outline-none transition focus:ring-2 focus:ring-blue-100 ${readOnly
+                            ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                             : 'border-slate-200 bg-white text-slate-850 focus:border-blue-600'
-                    }`}
+                        }`}
                 />
             )}
         </label>
@@ -52,6 +51,12 @@ function Field({ label, value, name, readOnly = false, options = null, onChange 
 
 export default function DriverProfileTab({ triggerToast }) {
     const { user, updateProfile } = useAuth();
+    const unlinkReasons = [
+        'Car was sold',
+        'Car was involved in accident',
+        'Car belongs to someone else',
+        'Other',
+    ];
 
     const [profileForm, setProfileForm] = useState({
         name: '',
@@ -69,6 +74,14 @@ export default function DriverProfileTab({ triggerToast }) {
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
     const [profileError, setProfileError] = useState('');
+    const [vehicles, setVehicles] = useState([]);
+    const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+    const [vehiclesError, setVehiclesError] = useState('');
+    const [vehicleToUnlink, setVehicleToUnlink] = useState(null);
+    const [unlinkStep, setUnlinkStep] = useState('confirm');
+    const [unlinkReason, setUnlinkReason] = useState('Car was sold');
+    const [otherReason, setOtherReason] = useState('');
+    const [isUnlinkingVehicle, setIsUnlinkingVehicle] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -106,6 +119,82 @@ export default function DriverProfileTab({ triggerToast }) {
             isMounted = false;
         };
     }, [user]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadVehicles = async () => {
+            try {
+                setIsLoadingVehicles(true);
+                setVehiclesError('');
+
+                const linkedVehicles = await uniparkApi.getDriverVehicles();
+                if (!isMounted) {
+                    return;
+                }
+
+                const activeVehicles = linkedVehicles.filter((vehicle) => vehicle.is_active);
+                setVehicles(activeVehicles);
+            } catch (error) {
+                if (isMounted) {
+                    setVehicles([]);
+                    setVehiclesError(error.message || 'Unable to load linked vehicles right now.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingVehicles(false);
+                }
+            }
+        };
+
+        loadVehicles();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const closeUnlinkModal = () => {
+        setVehicleToUnlink(null);
+        setUnlinkStep('confirm');
+        setUnlinkReason('Car was sold');
+        setOtherReason('');
+        setIsUnlinkingVehicle(false);
+    };
+
+    const openUnlinkModal = (vehicle) => {
+        setVehicleToUnlink(vehicle);
+        setUnlinkStep('confirm');
+        setUnlinkReason('Car was sold');
+        setOtherReason('');
+    };
+
+    const handleConfirmUnlinkReason = async () => {
+        if (!vehicleToUnlink) {
+            return;
+        }
+
+        const reasonText = unlinkReason === 'Other' ? otherReason.trim() : unlinkReason;
+        if (!reasonText) {
+            triggerToast('Please provide a reason to continue.');
+            return;
+        }
+
+        try {
+            setIsUnlinkingVehicle(true);
+            await uniparkApi.unlinkDriverVehicle(vehicleToUnlink.id, {
+                reason: unlinkReason,
+                details: unlinkReason === 'Other' ? reasonText : null,
+            });
+
+            setVehicles((prev) => prev.filter((vehicle) => vehicle.id !== vehicleToUnlink.id));
+            triggerToast(`Vehicle unlinked. Reason: ${reasonText}`);
+            closeUnlinkModal();
+        } catch (error) {
+            triggerToast(error.message || 'Unable to unlink this vehicle.');
+            setIsUnlinkingVehicle(false);
+        }
+    };
 
     const handleProfileChange = (e) => {
         const { name, value } = e.target;
@@ -238,36 +327,36 @@ export default function DriverProfileTab({ triggerToast }) {
 
                         <form onSubmit={handleSaveProfile} className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-2">
-                                <Field 
-                                    label="Full Name" 
-                                    name="name" 
-                                    value={profileForm.name} 
-                                    onChange={handleProfileChange} 
+                                <Field
+                                    label="Full Name"
+                                    name="name"
+                                    value={profileForm.name}
+                                    onChange={handleProfileChange}
                                 />
-                                <Field 
-                                    label="University ID / Number" 
-                                    name="email" 
-                                    value={profileForm.email} 
-                                    readOnly 
+                                <Field
+                                    label="University ID / Number"
+                                    name="email"
+                                    value={profileForm.email}
+                                    readOnly
                                 />
-                                <Field 
-                                    label="Phone Number" 
-                                    name="phone" 
-                                    value={profileForm.phone} 
-                                    onChange={handleProfileChange} 
+                                <Field
+                                    label="Phone Number"
+                                    name="phone"
+                                    value={profileForm.phone}
+                                    onChange={handleProfileChange}
                                 />
-                                <Field 
-                                    label="Department" 
-                                    name="department" 
-                                    value={profileForm.department} 
-                                    onChange={handleProfileChange} 
-                                    options={['Faculty of IT', 'School of Computing', 'Business School', 'Finance Office', 'Academic Staff']} 
+                                <Field
+                                    label="Department"
+                                    name="department"
+                                    value={profileForm.department}
+                                    onChange={handleProfileChange}
+                                    options={['Faculty of IT', 'School of Computing', 'Business School', 'Finance Office', 'Academic Staff']}
                                 />
                             </div>
 
                             <div className="mt-5 flex justify-end">
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     disabled={isSavingProfile}
                                     className="rounded-xl bg-blue-700 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
                                 >
@@ -286,7 +375,7 @@ export default function DriverProfileTab({ triggerToast }) {
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Current Password</label>
-                                    <input 
+                                    <input
                                         type="password"
                                         name="current"
                                         value={passwordForm.current}
@@ -296,7 +385,7 @@ export default function DriverProfileTab({ triggerToast }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">New Password</label>
-                                    <input 
+                                    <input
                                         type="password"
                                         name="new"
                                         value={passwordForm.new}
@@ -306,7 +395,7 @@ export default function DriverProfileTab({ triggerToast }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm New Password</label>
-                                    <input 
+                                    <input
                                         type="password"
                                         name="confirm"
                                         value={passwordForm.confirm}
@@ -317,15 +406,15 @@ export default function DriverProfileTab({ triggerToast }) {
                             </div>
 
                             <div className="mt-5 flex justify-end gap-3">
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={() => setPasswordForm({ current: '', new: '', confirm: '' })}
                                     className="text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer px-4 py-2"
                                 >
                                     Cancel
                                 </button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     disabled={isUpdatingPassword}
                                     className="rounded-xl bg-blue-700 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition cursor-pointer"
                                 >
@@ -333,6 +422,48 @@ export default function DriverProfileTab({ triggerToast }) {
                                 </button>
                             </div>
                         </form>
+                    </Panel>
+
+                    <Panel
+                        title="Linked Vehicle"
+                        icon={<svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 17h14l1-5-1.5-4.5A2 2 0 0016.61 6H7.39a2 2 0 00-1.89 1.5L4 12l1 5z" /><circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" /></svg>}
+                    >
+                        {isLoadingVehicles ? (
+                            <p className="text-sm text-slate-500">Checking linked vehicles...</p>
+                        ) : vehiclesError ? (
+                            <p className="text-sm text-amber-700">{vehiclesError}</p>
+                        ) : vehicles.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                                <p className="text-sm font-semibold text-slate-700">No vehicle linked to this driver.</p>
+                                <p className="mt-1 text-xs text-slate-500">Link a vehicle to see it here.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {vehicles.map((vehicle) => (
+                                    <div key={vehicle.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800">{vehicle.registration_number}</p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {vehicle.make || 'Unknown Make'} {vehicle.model || 'Unknown Model'}
+                                                </p>
+                                                <p className="mt-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                    {vehicle.is_primary ? 'Primary Vehicle' : 'Secondary Vehicle'}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => openUnlinkModal(vehicle)}
+                                                className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11px] font-bold text-red-600 transition hover:bg-red-50"
+                                            >
+                                                Unlink Vehicle
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </Panel>
                 </div>
 
@@ -385,8 +516,8 @@ export default function DriverProfileTab({ triggerToast }) {
                         <p className="mt-1 text-[11px] text-slate-500 leading-normal">
                             Removing your account will permanently revoke your campus parking permissions and digital permits.
                         </p>
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => alert('Account deletion request submitted to Administration.')}
                             className="mt-3.5 w-full rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 py-2.5 text-xs font-bold transition cursor-pointer"
                         >
@@ -395,6 +526,87 @@ export default function DriverProfileTab({ triggerToast }) {
                     </section>
                 </div>
             </div>
+
+            {vehicleToUnlink && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40" onClick={closeUnlinkModal} />
+                    <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+                        {unlinkStep === 'confirm' ? (
+                            <>
+                                <h3 className="text-lg font-bold text-slate-800">Unlink this vehicle?</h3>
+                                <p className="mt-2 text-sm text-slate-600">
+                                    Are you sure you want to unlink <span className="font-semibold">{vehicleToUnlink.registration_number}</span> from your profile?
+                                </p>
+
+                                <div className="mt-6 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={closeUnlinkModal}
+                                        className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setUnlinkStep('reason')}
+                                        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
+                                    >
+                                        Yes, Continue
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="text-lg font-bold text-slate-800">Why are you unlinking this vehicle?</h3>
+
+                                <div className="mt-4 space-y-2">
+                                    {unlinkReasons.map((reason) => (
+                                        <label key={reason} className="flex items-center gap-2 text-sm text-slate-700">
+                                            <input
+                                                type="radio"
+                                                name="unlinkReason"
+                                                value={reason}
+                                                checked={unlinkReason === reason}
+                                                onChange={(e) => setUnlinkReason(e.target.value)}
+                                                className="h-4 w-4 border-slate-300 text-blue-700 focus:ring-blue-500"
+                                            />
+                                            <span>{reason}</span>
+                                        </label>
+                                    ))}
+                                </div>
+
+                                {unlinkReason === 'Other' && (
+                                    <textarea
+                                        value={otherReason}
+                                        onChange={(e) => setOtherReason(e.target.value)}
+                                        placeholder="Please provide your reason"
+                                        className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                                        rows={3}
+                                    />
+                                )}
+
+                                <div className="mt-6 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setUnlinkStep('confirm')}
+                                        className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={isUnlinkingVehicle}
+                                        onClick={handleConfirmUnlinkReason}
+                                        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                    >
+                                        {isUnlinkingVehicle ? 'Unlinking...' : 'Confirm Unlink'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

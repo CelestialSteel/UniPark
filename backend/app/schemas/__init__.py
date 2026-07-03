@@ -11,8 +11,10 @@ from enum import Enum
 class UserRegisterRequest(BaseModel):
     """User registration request"""
     email: EmailStr
-    password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
-    role: str = Field(default="driver", description="Role: admin, security, or driver")
+    password: str = Field(..., min_length=8,
+                          description="Password must be at least 8 characters")
+    role: str = Field(default="driver",
+                      description="Role: admin, security, or driver")
     first_name: str = Field(..., min_length=1)
     last_name: str = Field(..., min_length=1)
     phone_number: Optional[str] = None
@@ -44,7 +46,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -122,6 +124,12 @@ class LinkVehicleRequest(BaseModel):
     is_primary: bool = False
 
 
+class UnlinkVehicleRequest(BaseModel):
+    """Unlink vehicle from driver request"""
+    reason: str = Field(..., min_length=1, max_length=120)
+    details: Optional[str] = Field(default=None, max_length=500)
+
+
 class VehicleResponse(BaseModel):
     """Vehicle response"""
     id: UUID
@@ -134,7 +142,7 @@ class VehicleResponse(BaseModel):
     is_primary: bool
     is_active: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -172,7 +180,7 @@ class ParkingZoneResponse(BaseModel):
     maintenance_spaces: int
     status: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -215,7 +223,7 @@ class ParkingSpaceResponse(BaseModel):
     currently_occupied_by_vehicle_id: Optional[UUID] = None
     cordoned_reason: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -250,10 +258,9 @@ class VehicleLogResponse(BaseModel):
     parking_zone_name: Optional[str] = None
     parking_zone_code: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
-
 
 
 # ==================== ALERT SCHEMAS ====================
@@ -276,7 +283,7 @@ class AlertResponse(BaseModel):
     is_active: bool
     resolved_at: Optional[datetime] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -293,7 +300,7 @@ class NotificationResponse(BaseModel):
     is_read: bool
     read_at: Optional[datetime] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

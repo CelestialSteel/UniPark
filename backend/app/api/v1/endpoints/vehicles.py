@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_driver_user, get_security_user
-from app.schemas import VehicleResponse, VehicleCreateRequest, LinkVehicleRequest
-from app.models import Vehicle, Driver, User, UserRole
+from app.schemas import VehicleResponse, VehicleCreateRequest, LinkVehicleRequest, UnlinkVehicleRequest
+from app.models import Vehicle, Driver, User, UserRole, VehicleUnlinkEvent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,22 +19,23 @@ async def get_vehicle(
 ):
     """Get vehicle details"""
     vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
-    
+
     if not vehicle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found"
         )
-    
+
     # Drivers can only view their own vehicles
     if current_user.role == UserRole.DRIVER:
-        driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+        driver = db.query(Driver).filter(
+            Driver.user_id == current_user.id).first()
         if not driver or vehicle.driver_id != driver.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view this vehicle"
             )
-    
+
     return vehicle
 
 
@@ -45,18 +46,18 @@ async def register_vehicle(
     db: Session = Depends(get_db)
 ):
     """Register new vehicle (security only)"""
-    
+
     # Check if registration number already exists
     existing_vehicle = db.query(Vehicle).filter(
         Vehicle.registration_number == request.registration_number
     ).first()
-    
+
     if existing_vehicle and existing_vehicle.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Vehicle registration number already exists"
         )
-    
+
     # For now, require driver_id to be provided through frontend
     # In real implementation, security would search for driver
     raise HTTPException(
@@ -72,28 +73,28 @@ async def link_vehicle(
     db: Session = Depends(get_db)
 ):
     """Link vehicle to driver account (driver)"""
-    
+
     # Get driver record
     driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver profile not found"
         )
-    
+
     # Check if registration number already exists for another driver
     existing_vehicle = db.query(Vehicle).filter(
         Vehicle.registration_number == request.registration_number,
         Vehicle.is_active == True
     ).first()
-    
+
     if existing_vehicle and existing_vehicle.driver_id != driver.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This vehicle is already registered to another driver"
         )
-    
+
     # If vehicle already exists, just activate it
     if existing_vehicle:
         existing_vehicle.is_active = True
@@ -102,7 +103,7 @@ async def link_vehicle(
         db.refresh(existing_vehicle)
         logger.info(f"Vehicle linked: {existing_vehicle.registration_number}")
         return existing_vehicle
-    
+
     # Create new vehicle
     new_vehicle = Vehicle(
         driver_id=driver.id,
@@ -112,22 +113,22 @@ async def link_vehicle(
         is_primary=request.is_primary,
         registered_by_user_id=current_user.id
     )
-    
+
     # If this is first vehicle, make it primary
     existing_vehicles = db.query(Vehicle).filter(
         Vehicle.driver_id == driver.id,
         Vehicle.is_active == True
     ).count()
-    
+
     if existing_vehicles == 0:
         new_vehicle.is_primary = True
-    
+
     db.add(new_vehicle)
     db.commit()
     db.refresh(new_vehicle)
-    
+
     logger.info(f"Vehicle linked: {new_vehicle.registration_number}")
-    
+
     return new_vehicle
 
 
@@ -138,15 +139,51 @@ async def unlink_vehicle(
     db: Session = Depends(get_db)
 ):
     """Unlink vehicle from driver account (driver)"""
-    
+    await _unlink_vehicle_from_driver(
+        vehicle_id=vehicle_id,
+        reason="Unlinked from driver profile",
+        details=None,
+        current_user=current_user,
+        db=db,
+    )
+
+
+@router.post("/{vehicle_id}/unlink", status_code=status.HTTP_200_OK)
+async def unlink_vehicle_with_reason(
+    vehicle_id: str,
+    request: UnlinkVehicleRequest,
+    current_user: User = Depends(get_driver_user),
+    db: Session = Depends(get_db)
+):
+    """Unlink vehicle and persist the driver-provided reason."""
+    await _unlink_vehicle_from_driver(
+        vehicle_id=vehicle_id,
+        reason=request.reason,
+        details=request.details,
+        current_user=current_user,
+        db=db,
+    )
+
+    return {"message": "Vehicle unlinked successfully"}
+
+
+async def _unlink_vehicle_from_driver(
+    vehicle_id: str,
+    reason: str,
+    details: str | None,
+    current_user: User,
+    db: Session,
+):
+    """Shared unlink logic for both legacy and reason-aware endpoints."""
+
     vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
-    
+
     if not vehicle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found"
         )
-    
+
     # Verify driver owns this vehicle
     driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
     if vehicle.driver_id != driver.id:
@@ -154,19 +191,19 @@ async def unlink_vehicle(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to unlink this vehicle"
         )
-    
+
     # Cannot unlink if it's the only active vehicle
     active_vehicles = db.query(Vehicle).filter(
         Vehicle.driver_id == driver.id,
         Vehicle.is_active == True
     ).count()
-    
+
     if active_vehicles <= 1 and vehicle.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot unlink primary vehicle. You must have at least one active vehicle."
         )
-    
+
     # Cannot unlink if it's primary and there are other active vehicles
     if vehicle.is_primary and active_vehicles > 1:
         # Set another vehicle as primary
@@ -177,8 +214,17 @@ async def unlink_vehicle(
         ).first()
         if next_primary:
             next_primary.is_primary = True
-    
+
+    unlink_event = VehicleUnlinkEvent(
+        vehicle_id=vehicle.id,
+        driver_id=driver.id,
+        unlinked_by_user_id=current_user.id,
+        reason=reason,
+        details=details.strip() if details else None,
+    )
+
     vehicle.is_active = False
+    db.add(unlink_event)
     db.commit()
-    
+
     logger.info(f"Vehicle unlinked: {vehicle.registration_number}")
