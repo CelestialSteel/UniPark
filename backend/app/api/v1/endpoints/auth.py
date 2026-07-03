@@ -21,7 +21,7 @@ async def register(
     db: Session = Depends(get_db)
 ):
     """Register new user"""
-    
+
     # Check if email already exists
     existing_user = db.query(User).filter(User.email == request.email).first()
     if existing_user:
@@ -29,7 +29,7 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Validate role
     try:
         role = UserRole(request.role.lower())
@@ -38,7 +38,7 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid role. Must be: admin, security, or driver"
         )
-    
+
     # Create user
     user = User(
         email=request.email,
@@ -48,23 +48,26 @@ async def register(
         last_name=request.last_name,
         phone_number=request.phone_number
     )
-    
+
     db.add(user)
     db.flush()  # Get the user ID without committing yet
-    
+
     # If driver role, create driver profile
     if role == UserRole.DRIVER:
+        identifier = (request.student_or_lecturer_id or "").strip() or None
         driver = Driver(
             user_id=user.id,
             license_number=f"PENDING-{user.id}",
+            faculty_id=identifier if request.is_lecturer else None,
+            student_id=identifier if not request.is_lecturer else None,
         )
         db.add(driver)
-    
+
     db.commit()
     db.refresh(user)
-    
+
     logger.info(f"New user registered: {user.email} with role {role.value}")
-    
+
     return {
         "message": "User registered successfully",
         "user_id": str(user.id),
@@ -80,25 +83,25 @@ async def login(
     db: Session = Depends(get_db)
 ):
     """Login user and set secure HttpOnly cookies"""
-    
+
     user = db.query(User).filter(User.email == request.email).first()
-    
+
     if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is inactive"
         )
-    
+
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
     # Set cookies
     response.set_cookie(
         key="access_token",
@@ -108,7 +111,7 @@ async def login(
         secure=settings.COOKIE_SECURE,
         samesite="lax"
     )
-    
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -117,9 +120,9 @@ async def login(
         secure=settings.COOKIE_SECURE,
         samesite="lax"
     )
-    
+
     logger.info(f"User logged in via cookies: {user.email}")
-    
+
     # Return user details without token strings in body
     return {
         "id": str(user.id),
@@ -137,35 +140,35 @@ async def refresh_token(
     db: Session = Depends(get_db)
 ):
     """Refresh access token using refresh token cookie"""
-    
+
     refresh_token_str = request.cookies.get("refresh_token")
-    
+
     if not refresh_token_str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Refresh token required"
         )
-    
+
     try:
         payload = decode_token(refresh_token_str)
-        
+
         if payload.get("type") != "refresh":
             raise ValueError("Not a refresh token")
-        
+
         user_id = payload.get("sub")
         if not user_id:
             raise ValueError("Invalid refresh token")
-        
+
         user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found or inactive"
             )
-        
+
         # Issue new access token
         access_token = create_access_token(data={"sub": str(user.id)})
-        
+
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -174,10 +177,10 @@ async def refresh_token(
             secure=settings.COOKIE_SECURE,
             samesite="lax"
         )
-        
+
         logger.info(f"Token refreshed via cookie for: {user.email}")
         return {"status": "refreshed"}
-    
+
     except Exception as e:
         logger.warning(f"Token refresh failed: {e}")
         raise HTTPException(
@@ -192,7 +195,7 @@ async def logout(
     current_user: User = Depends(get_current_user)
 ):
     """Logout user and delete cookies"""
-    
+
     response.delete_cookie(key="access_token")
     response.delete_cookie(key="refresh_token")
     logger.info(f"User logged out and cookies deleted: {current_user.email}")

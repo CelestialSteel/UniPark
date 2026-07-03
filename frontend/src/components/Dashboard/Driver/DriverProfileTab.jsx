@@ -40,8 +40,8 @@ function Field({ label, value, name, readOnly = false, options = null, onChange 
                     onChange={onChange}
                     readOnly={readOnly}
                     className={`w-full rounded-xl border px-4 py-2.5 text-sm shadow-xs outline-none transition focus:ring-2 focus:ring-blue-100 ${readOnly
-                            ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                            : 'border-slate-200 bg-white text-slate-850 focus:border-blue-600'
+                        ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                        : 'border-slate-200 bg-white text-slate-850 focus:border-blue-600'
                         }`}
                 />
             )}
@@ -63,6 +63,8 @@ export default function DriverProfileTab({ triggerToast }) {
         email: '',
         phone: '',
         department: 'Faculty of IT',
+        idNumber: '',
+        idLabel: 'Student ID',
     });
 
     const [passwordForm, setPasswordForm] = useState({
@@ -101,6 +103,8 @@ export default function DriverProfileTab({ triggerToast }) {
                     email: profile.email || user?.email || '12345',
                     phone: profile.phone || user?.phone || '+254 712 345678',
                     department: profile.department || user?.department || 'Faculty of IT',
+                    idNumber: profile.student_id || profile.faculty_id || profile.staff_id || '',
+                    idLabel: profile.faculty_id ? 'Lecturer ID' : profile.staff_id ? 'Staff ID' : 'Student ID',
                 });
             } catch (error) {
                 if (isMounted) {
@@ -334,9 +338,9 @@ export default function DriverProfileTab({ triggerToast }) {
                                     onChange={handleProfileChange}
                                 />
                                 <Field
-                                    label="University ID / Number"
-                                    name="email"
-                                    value={profileForm.email}
+                                    label={profileForm.idLabel}
+                                    name="idNumber"
+                                    value={profileForm.idNumber || 'Not set'}
                                     readOnly
                                 />
                                 <Field

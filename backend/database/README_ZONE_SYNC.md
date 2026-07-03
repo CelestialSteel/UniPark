@@ -2,6 +2,8 @@
 
 This guide helps you make your local UniPark database match the current shared zone layout.
 
+It also records the driver identity field used at sign-up so team members can keep the database and driver profile aligned when user-account data changes.
+
 Target zone layout:
 - Phase 1 (PH1)
 - Phase 2 (PH2)
@@ -25,6 +27,19 @@ Legacy mock zones that are removed:
 - East Campus (ECA)
 - West Campus (WCA)
 
+## Driver Sign-Up ID
+
+The sign-up form collects a university ID number for driver accounts.
+
+Database mapping:
+- Students store the value in `drivers.student_id`
+- Lecturers store the value in `drivers.faculty_id`
+- Future staff accounts can use `drivers.staff_id`
+
+Frontend display:
+- The driver profile shows the same ID value in the Personal Information card
+- If no ID has been saved yet, the profile shows `Not set`
+
 ## Files Included
 
 - backend/database/sync_database_to_phase_layout.sql
@@ -36,25 +51,25 @@ Legacy mock zones that are removed:
 
 From repository root:
 
-psql -U moran -d unipark_db -v ON_ERROR_STOP=1 -f backend/database/sync_database_to_phase_layout.sql
+psql -U user -d unipark_db -v ON_ERROR_STOP=1 -f backend/database/sync_database_to_phase_layout.sql
 
-If your postgres role is different, replace moran with your own role.
+If your postgres role is different, replace user with your own role.
 
 ## Option B: Run Inside psql
 
 1) Connect:
 
-psql -U moran -d unipark_db
+psql -U user -d unipark_db
 
 2) Run using absolute path with forward slashes:
 
-\i C:/Users/dalto/OneDrive/Desktop/Coding/Year_3.1/UniPark/backend/database/sync_database_to_phase_layout.sql
+\i UniPark/backend/database/sync_database_to_phase_layout.sql
 
 ## Verify
 
 After running, verify zones:
 
-psql -U moran -d unipark_db -f backend/database/verify_zone_alignment.sql
+psql -U user -d unipark_db -f backend/database/verify_zone_alignment.sql
 
 Expected outcome:
 - 9 expected zones present
@@ -74,3 +89,4 @@ Expected outcome:
 - This guide only aligns parking zones and related zone-linked mock data.
 - It does not recreate the full schema.
 - It does not remove user, driver, or vehicle records except where directly related to deleted legacy zones.
+- Driver sign-up identity fields are stored on the `drivers` table, not the `users` table.

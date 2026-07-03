@@ -158,7 +158,7 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const register = async ({ fullName, email, password, phoneNumber }) => {
+    const register = async ({ fullName, email, password, phoneNumber, studentOrLecturerId, isLecturer }) => {
         setIsLoading(true);
         setError(null);
 
@@ -181,6 +181,8 @@ export function AuthProvider({ children }) {
                     first_name: firstName,
                     last_name: lastNameParts.join(' ') || firstName,
                     phone_number: phoneNumber,
+                    student_or_lecturer_id: studentOrLecturerId,
+                    is_lecturer: isLecturer,
                 }),
             });
 

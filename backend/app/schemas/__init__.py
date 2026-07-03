@@ -18,6 +18,8 @@ class UserRegisterRequest(BaseModel):
     first_name: str = Field(..., min_length=1)
     last_name: str = Field(..., min_length=1)
     phone_number: Optional[str] = None
+    student_or_lecturer_id: Optional[str] = None
+    is_lecturer: bool = False
 
 
 class UserLoginRequest(BaseModel):
