@@ -34,23 +34,22 @@ async def get_zones_occupancy(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get occupancy status for all zones"""
+    """Get occupancy status for all zones.
+
+    The `occupied_spaces` counter is maintained by the /api/v1/logs/entry
+    and /api/v1/logs/exit endpoints, so the values returned here always
+    reflect the live state.
+    """
     zones = db.query(ParkingZone).all()
-    
+
     result = []
     for zone in zones:
-        occupied = db.query(func.count(ParkingSpace.id)).filter(
-            ParkingSpace.zone_id == zone.id,
-            ParkingSpace.status == "occupied"
-        ).scalar() or 0
-        
-        available = db.query(func.count(ParkingSpace.id)).filter(
-            ParkingSpace.zone_id == zone.id,
-            ParkingSpace.status == "available"
-        ).scalar() or 0
-        
-        occupancy_pct = (occupied / zone.total_spaces * 100) if zone.total_spaces > 0 else 0
-        
+        occupied = zone.occupied_spaces or 0
+        available = max(0, zone.total_spaces - occupied - zone.reserved_spaces -
+                        zone.cordoned_spaces - zone.maintenance_spaces)
+        occupancy_pct = (occupied / zone.total_spaces *
+                         100) if zone.total_spaces > 0 else 0
+
         result.append(ZoneOccupancyResponse(
             zone_id=str(zone.id),
             zone_name=zone.zone_name,
@@ -63,7 +62,7 @@ async def get_zones_occupancy(
             maintenance_spaces=zone.maintenance_spaces,
             occupancy_percentage=round(occupancy_pct, 2)
         ))
-    
+
     return result
 
 
@@ -75,13 +74,13 @@ async def get_zone(
 ):
     """Get parking zone details"""
     zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
-    
+
     if not zone:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Parking zone not found"
         )
-    
+
     return zone
 
 
@@ -92,18 +91,18 @@ async def create_zone(
     db: Session = Depends(get_db)
 ):
     """Create new parking zone (admin only)"""
-    
+
     # Check if zone code already exists
     existing_zone = db.query(ParkingZone).filter(
         ParkingZone.zone_code == request.zone_code
     ).first()
-    
+
     if existing_zone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Zone code already exists"
         )
-    
+
     new_zone = ParkingZone(
         zone_name=request.zone_name,
         zone_code=request.zone_code,
@@ -112,13 +111,13 @@ async def create_zone(
         total_spaces=request.total_spaces,
         created_by_user_id=current_user.id
     )
-    
+
     db.add(new_zone)
     db.commit()
     db.refresh(new_zone)
-    
+
     logger.info(f"Zone created: {new_zone.zone_name} ({new_zone.zone_code})")
-    
+
     return new_zone
 
 
@@ -130,15 +129,15 @@ async def update_zone(
     db: Session = Depends(get_db)
 ):
     """Update parking zone (admin only)"""
-    
+
     zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
-    
+
     if not zone:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Parking zone not found"
         )
-    
+
     # Update fields if provided
     if request.zone_name:
         zone.zone_name = request.zone_name
@@ -150,12 +149,12 @@ async def update_zone(
         zone.total_spaces = request.total_spaces
     if request.status:
         zone.status = request.status
-    
+
     db.commit()
     db.refresh(zone)
-    
+
     logger.info(f"Zone updated: {zone.zone_name}")
-    
+
     return zone
 
 
@@ -166,29 +165,30 @@ async def cordone_zone(
     db: Session = Depends(get_db)
 ):
     """Cordone entire parking zone (admin only)"""
-    
+
     zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
-    
+
     if not zone:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Parking zone not found"
         )
-    
+
     zone.status = ZoneStatus.CORDONED
-    
+
     # Mark all spaces in zone as cordoned
-    spaces = db.query(ParkingSpace).filter(ParkingSpace.zone_id == zone_id).all()
+    spaces = db.query(ParkingSpace).filter(
+        ParkingSpace.zone_id == zone_id).all()
     for space in spaces:
         if space.status != "occupied":
             space.status = "cordoned"
             space.cordoned_reason = "Zone cordoned"
-    
+
     db.commit()
     db.refresh(zone)
-    
+
     logger.info(f"Zone cordoned: {zone.zone_name}")
-    
+
     return zone
 
 
@@ -199,17 +199,17 @@ async def release_zone(
     db: Session = Depends(get_db)
 ):
     """Release cordoned parking zone (admin only)"""
-    
+
     zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
-    
+
     if not zone:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Parking zone not found"
         )
-    
+
     zone.status = ZoneStatus.ACTIVE
-    
+
     # Mark all cordoned spaces as available
     spaces = db.query(ParkingSpace).filter(
         ParkingSpace.zone_id == zone_id,
@@ -218,10 +218,10 @@ async def release_zone(
     for space in spaces:
         space.status = "available"
         space.cordoned_reason = None
-    
+
     db.commit()
     db.refresh(zone)
-    
+
     logger.info(f"Zone released: {zone.zone_name}")
-    
+
     return zone

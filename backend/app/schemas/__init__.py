@@ -268,22 +268,36 @@ class ParkingSpaceResponse(BaseModel):
 # ==================== VEHICLE LOG SCHEMAS ====================
 
 class VehicleEntryRequest(BaseModel):
-    """Vehicle entry request"""
-    registration_number: str = Field(..., min_length=1)
+    """Vehicle entry request.
+
+    Either ``registration_number`` is provided (for a vehicle that's already
+    linked to a driver) or ``guest_registration`` is provided (for a
+    visitor whose plate is not yet in the system). Exactly one of the two
+    must be supplied.
+    """
+    registration_number: Optional[str] = Field(default=None, max_length=50)
     parking_zone_id: UUID
     parking_space_id: Optional[UUID] = None
+    guest_registration: Optional[str] = Field(default=None, max_length=50)
+    guest_name: Optional[str] = Field(default=None, max_length=150)
+    guest_group: Optional[str] = Field(default=None, max_length=50)
 
 
 class VehicleExitRequest(BaseModel):
-    """Vehicle exit request"""
-    registration_number: str = Field(..., min_length=1)
+    """Vehicle exit request.
+
+    Accepts either a real plate (``registration_number``) or a visitor plate
+    (``guest_registration``).
+    """
+    registration_number: Optional[str] = Field(default=None, max_length=50)
+    guest_registration: Optional[str] = Field(default=None, max_length=50)
 
 
 class VehicleLogResponse(BaseModel):
     """Vehicle log response"""
     id: UUID
-    vehicle_id: UUID
-    driver_id: UUID
+    vehicle_id: Optional[UUID] = None
+    driver_id: Optional[UUID] = None
     parking_space_id: Optional[UUID] = None
     parking_zone_id: UUID
     status: str
@@ -294,6 +308,9 @@ class VehicleLogResponse(BaseModel):
     driver_name: Optional[str] = None
     parking_zone_name: Optional[str] = None
     parking_zone_code: Optional[str] = None
+    guest_registration: Optional[str] = None
+    guest_name: Optional[str] = None
+    guest_group: Optional[str] = None
     created_at: datetime
 
     class Config:

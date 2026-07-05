@@ -158,6 +158,10 @@ class ParkingZone(Base):
     reserved_spaces = Column(Integer, default=0)
     cordoned_spaces = Column(Integer, default=0)
     maintenance_spaces = Column(Integer, default=0)
+    # Live counter, bumped by /api/v1/logs/entry and decremented by /exit.
+    # Stays in sync with the parking_spaces.status='occupied' count for
+    # dashboards that don't enumerate individual spaces.
+    occupied_spaces = Column(Integer, default=0, nullable=False)
     status = Column(Enum(ZoneStatus, values_callable=enum_values),
                     default=ZoneStatus.ACTIVE)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -209,23 +213,31 @@ class VehicleLog(Base):
         Index("idx_logs_vehicle_id", "vehicle_id"),
         Index("idx_logs_driver_id", "driver_id"),
         Index("idx_logs_entry_time", "entry_time"),
+        Index("idx_logs_guest_registration", "guest_registration"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"))
-    driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey(
+        "vehicles.id"), nullable=True)
+    driver_id = Column(UUID(as_uuid=True), ForeignKey(
+        "drivers.id"), nullable=True)
     parking_space_id = Column(UUID(as_uuid=True), ForeignKey(
         "parking_spaces.id"), nullable=True)
     parking_zone_id = Column(
         UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     status = Column(Enum(VehicleEntryStatus, values_callable=enum_values),
-                    default=VehicleEntryStatus.ENTERED)
+                    default=VehicleEntryStatus.ENTERED, nullable=False)
     entry_time = Column(DateTime, nullable=False)
     exit_time = Column(DateTime, nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     recorded_by_user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Visitor fields — populated when the plate is not linked to a driver
+    guest_registration = Column(String(50), nullable=True)
+    guest_name = Column(String(150), nullable=True)
+    guest_group = Column(String(50), nullable=True)
 
     # Relationships
     vehicle = relationship("Vehicle", back_populates="vehicle_logs")

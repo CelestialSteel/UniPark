@@ -114,4 +114,12 @@ export const uniparkApi = {
     getUnreadNotificationCount: () => requestJson('/api/v1/notifications/unread-count'),
     markNotificationAsRead: (id) => requestJson(`/api/v1/notifications/${id}/mark-as-read`, { method: 'POST' }),
     markAllNotificationsAsRead: () => requestJson('/api/v1/notifications/mark-all-as-read', { method: 'POST' }),
+
+    // Security gate: live entry/exit log
+    getActiveLogs: (limit = 200) =>
+        requestJson(`/api/v1/logs/active?limit=${limit}`),
+    logVehicleEntry: (payload) =>
+        requestJson('/api/v1/logs/entry', { method: 'POST', body: payload }),
+    logVehicleExit: (payload) =>
+        requestJson('/api/v1/logs/exit', { method: 'POST', body: payload }),
 };

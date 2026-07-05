@@ -59,19 +59,37 @@ def serialize_vehicle(vehicle: Vehicle) -> dict:
 
 def serialize_driver_log(log: VehicleLog) -> dict:
     """Convert a driver log into the frontend display shape."""
+    plate = None
+    if log.vehicle is not None:
+        plate = log.vehicle.registration_number
+    elif log.guest_registration:
+        plate = log.guest_registration
+
+    driver_name = None
+    if log.driver and log.driver.user:
+        driver_name = (
+            f"{log.driver.user.first_name or ''} {log.driver.user.last_name or ''}"
+        ).strip() or log.driver.user.email
+    elif log.guest_name:
+        driver_name = log.guest_name
+
     return {
-        "id": log.id,
-        "vehicle_id": log.vehicle_id,
-        "driver_id": log.driver_id,
-        "parking_space_id": log.parking_space_id,
-        "parking_zone_id": log.parking_zone_id,
+        "id": str(log.id) if log.id is not None else None,
+        "vehicle_id": str(log.vehicle_id) if log.vehicle_id else None,
+        "driver_id": str(log.driver_id) if log.driver_id else None,
+        "parking_space_id": str(log.parking_space_id) if log.parking_space_id else None,
+        "parking_zone_id": str(log.parking_zone_id) if log.parking_zone_id else None,
         "status": log.status,
         "entry_time": log.entry_time,
         "exit_time": log.exit_time,
         "duration_minutes": log.duration_minutes,
-        "vehicle_registration": log.vehicle.registration_number if log.vehicle else None,
+        "vehicle_registration": plate,
+        "driver_name": driver_name,
         "parking_zone_name": log.parking_zone.zone_name if log.parking_zone else None,
         "parking_zone_code": log.parking_zone.zone_code if log.parking_zone else None,
+        "guest_registration": log.guest_registration,
+        "guest_name": log.guest_name,
+        "guest_group": log.guest_group,
         "created_at": log.created_at,
     }
 

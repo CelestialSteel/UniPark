@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ASSETS } from '../../constants/assets';
+import { uniparkApi } from '../../utils/uniparkApi';
 
 // Tabs
 import GuardHomeTab from './Security/GuardHomeTab';
@@ -12,31 +13,15 @@ import ZoneOccupancyTab from './Security/ZoneOccupancyTab';
 import ProfileTab from './Security/ProfileTab';
 import ContactDriverTab from './Security/ContactDriverTab';
 
-// --- INITIAL MOCK DATA ---
-const INITIAL_ZONES = [
-    { id: '1', name: 'Phase 1 Lot', code: 'P1', total: 150, occupied: 112, reserved: 15, cordoned: 5, status: 'active' },
-    { id: '2', name: 'Phase 2 Lot', code: 'P2', total: 120, occupied: 45, reserved: 5, cordoned: 0, status: 'active' },
-    { id: '3', name: 'Siwaka Lot', code: 'SWK', total: 80, occupied: 74, reserved: 4, cordoned: 2, status: 'active' },
-    { id: '4', name: 'Library Lot', code: 'LIB', total: 90, occupied: 86, reserved: 2, cordoned: 2, status: 'active' },
-    { id: '5', name: 'Management Lot', code: 'MGT', total: 40, occupied: 15, reserved: 20, cordoned: 0, status: 'active' },
-    { id: '6', name: 'Sports Complex Lot', code: 'SPC', total: 100, occupied: 12, reserved: 0, cordoned: 45, status: 'active' },
-];
-
+// Kept for ContactDriverTab only, which still does a client-side plate
+// search against a static directory. A future iteration should refactor
+// it to use the live API as well.
 const REGISTERED_DRIVERS = [
     { plate: 'KDC 456X', name: 'Dalton Muindi', email: 'dalton.muindi@strathmore.edu', idNumber: '184066', phone: '+254 712 345678', department: 'Faculty of IT', role: 'Student' },
     { plate: 'KBB 123A', name: 'Griffin Sitati', email: 'griffin.sitati@strathmore.edu', idNumber: '191613', phone: '+254 722 987654', department: 'School of Computing', role: 'Student' },
     { plate: 'KCA 789B', name: 'Anthony Khajira', email: 'akhajira@strathmore.ac.ke', idNumber: 'SU-4009', phone: '+254 733 111222', department: 'Academic Staff', role: 'Faculty' },
     { plate: 'KAA 999Z', name: 'David Ochieng', email: 'dochieng@strathmore.edu', idNumber: '175560', phone: '+254 701 999888', department: 'Business School', role: 'Student' },
     { plate: 'KCC 888H', name: 'Mercy Njoroge', email: 'mnjoroge@strathmore.ac.ke', idNumber: 'SU-5034', phone: '+254 715 444333', department: 'Finance Office', role: 'Staff' },
-];
-
-const INITIAL_LOGS = [
-    { id: 'log-1', plate: 'KDC 456X', driver: 'Dalton Muindi', zone: 'Phase 1 Lot', entry: '2026-06-30 08:15 AM', exit: '--', status: 'Entered' },
-    { id: 'log-2', plate: 'KBB 123A', driver: 'Griffin Sitati', zone: 'Library Lot', entry: '2026-06-30 07:30 AM', exit: '2026-06-30 11:45 AM', status: 'Exited' },
-    { id: 'log-3', plate: 'KCA 789B', driver: 'Anthony Khajira', zone: 'Management Lot', entry: '2026-06-30 09:00 AM', exit: '--', status: 'Entered' },
-    { id: 'log-4', plate: 'KDD 555Y', driver: 'Sharon Wambui', zone: 'Sports Complex Lot', entry: '2026-06-30 06:15 AM', exit: '2026-06-30 10:30 AM', status: 'Exited' },
-    { id: 'log-5', plate: 'KAA 999Z', driver: 'David Ochieng', zone: 'Phase 2 Lot', entry: '2026-06-30 07:45 AM', exit: '--', status: 'Entered' },
-    { id: 'log-6', plate: 'KCC 888H', driver: 'Mercy Njoroge', zone: 'Siwaka Lot', entry: '2026-06-30 14:00 PM', exit: '--', status: 'Entered' },
 ];
 
 const NAV_ITEMS = [
@@ -72,15 +57,33 @@ const NAV_ITEMS = [
     },
 ];
 
+/**
+ * Map the live `GET /api/v1/zones/occupancy` payload into the
+ * (id, name, code, total, occupied, reserved, cordoned) shape that the
+ * GuardHomeTab and ZoneOccupancyTab still expect.
+ */
+function adaptZones(zoneOccupancy) {
+    return (zoneOccupancy || []).map((z) => ({
+        id: z.zone_id || z.id,
+        name: z.zone_name || z.name,
+        code: z.zone_code || z.code,
+        total: z.total_spaces || z.total || 0,
+        occupied: z.occupied_spaces ?? z.occupied ?? 0,
+        reserved: z.reserved_spaces ?? z.reserved ?? 0,
+        cordoned: z.cordoned_spaces ?? z.cordoned ?? 0,
+        status: z.status || 'active',
+    }));
+}
+
 export default function SecurityDashboard() {
     const navigate = useNavigate();
     const { logout, user } = useAuth();
 
     // --- STATE ---
     const [activeTab, setActiveTab] = useState('home');
-    const [zones, setZones] = useState(INITIAL_ZONES);
-    const [registeredDrivers, setRegisteredDrivers] = useState(REGISTERED_DRIVERS);
-    const [logs, setLogs] = useState(INITIAL_LOGS);
+    const [zones, setZones] = useState([]);
+    const [activeLogs, setActiveLogs] = useState([]);
+    const [zonesLoading, setZonesLoading] = useState(true);
 
     // Toast notifications
     const [toastMessage, setToastMessage] = useState('');
@@ -91,111 +94,82 @@ export default function SecurityDashboard() {
         setTimeout(() => setToastMessage(''), 3000);
     };
 
+    // --- LIVE ZONE OCCUPANCY (drives GuardHomeTab + ZoneOccupancyTab) ---
+    const refreshZones = useCallback(async () => {
+        try {
+            const data = await uniparkApi.getZoneOccupancy();
+            setZones(adaptZones(data));
+        } catch (err) {
+            // Soft-fail; the dashboards can render with stale data
+            console.error('Failed to load zone occupancy:', err);
+        } finally {
+            setZonesLoading(false);
+        }
+    }, []);
+
+    // --- LIVE ACTIVE LOGS (drives GuardHomeTab's "recent activity") ---
+    const refreshActiveLogs = useCallback(async () => {
+        try {
+            const data = await uniparkApi.getActiveLogs(200);
+            setActiveLogs(data || []);
+        } catch (err) {
+            console.error('Failed to load active logs:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        refreshZones();
+        refreshActiveLogs();
+        // Auto-refresh every 30 seconds so the home / occupancy views
+        // stay roughly in sync with whatever the other tabs are doing.
+        const handle = window.setInterval(() => {
+            refreshZones();
+            refreshActiveLogs();
+        }, 30000);
+        return () => window.clearInterval(handle);
+    }, [refreshZones, refreshActiveLogs]);
+
     // --- SHARED METRICS ---
     const metrics = useMemo(() => {
         const total = zones.reduce((sum, z) => sum + z.total, 0);
         const occupied = zones.reduce((sum, z) => sum + z.occupied, 0);
         const reserved = zones.reduce((sum, z) => sum + z.reserved, 0);
         const cordoned = zones.reduce((sum, z) => sum + z.cordoned, 0);
-        const available = total - occupied - reserved - cordoned;
+        const available = Math.max(total - occupied - reserved - cordoned, 0);
         const occupancyRate = total > 0 ? Math.round((occupied / total) * 100) : 0;
 
-        const parkedNow = logs.filter(l => l.status === 'Entered').length;
-        const entriesToday = logs.filter(l => l.entry && l.entry.startsWith('2026-06-30')).length;
-        const exitsToday = logs.filter(l => l.exit && l.exit !== '--' && l.exit.startsWith('2026-06-30')).length;
+        const parkedNow = activeLogs.length;
+        const todayPrefix = new Date().toISOString().split('T')[0];
+        const entriesToday = activeLogs.filter((l) =>
+            (l.entry_time || '').startsWith(todayPrefix),
+        ).length;
+        const exitsToday = 0; // not tracked in real-time; surfaced via reports
 
-        return { total, occupied, reserved, cordoned, available, occupancyRate, parkedNow, entriesToday, exitsToday };
-    }, [zones, logs]);
+        return { total, occupied, reserved, cordoned, available, occupancyRate, parkedNow, entriesToday, exitsToday, loading: zonesLoading };
+    }, [zones, activeLogs, zonesLoading]);
 
-    // --- ACTION HANDLERS ---
-    // Note: vehicle registration is now handled by RegisterVehicleTab via the
-    // backend `POST /api/v1/vehicles/admin-link` endpoint, so no parent
-    // callback is needed.
-
-    const handleLogEntry = (plate, zoneName, driverName, role, dept) => {
-        // Increment zone occupancy if capacity allows
-        let updated = false;
-        const updatedZones = zones.map(z => {
-            if (z.name === zoneName) {
-                if (z.occupied >= z.total) {
-                    triggerToast(`Warning: ${z.name} is currently full.`);
-                }
-                updated = true;
-                return { ...z, occupied: z.occupied + 1 };
-            }
-            return z;
-        });
-
-        if (!updated) {
-            triggerToast(`Error: Zone ${zoneName} not found.`);
-            return false;
-        }
-
-        setZones(updatedZones);
-
-        // Add log entry
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        const newLog = {
-            id: `log-${Date.now()}`,
-            plate: plate.toUpperCase(),
-            driver: driverName || 'Guest Visitor',
-            zone: zoneName,
-            entry: `${dateStr} ${timeStr}`,
-            exit: '--',
-            status: 'Entered'
-        };
-
-        setLogs([newLog, ...logs]);
-        triggerToast(`Entry logged for ${plate.toUpperCase()} at ${zoneName}.`);
-        return true;
-    };
-
-    const handleLogExit = (logId) => {
-        const targetLog = logs.find(l => l.id === logId);
-        if (!targetLog) return;
-
-        // Decrement zone occupancy
-        const updatedZones = zones.map(z => {
-            if (z.name === targetLog.zone) {
-                return { ...z, occupied: Math.max(0, z.occupied - 1) };
-            }
-            return z;
-        });
-
-        setZones(updatedZones);
-
-        // Update log status
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        const updatedLogs = logs.map(l => {
-            if (l.id === logId) {
-                return {
-                    ...l,
-                    exit: `${dateStr} ${timeStr}`,
-                    status: 'Exited'
-                };
-            }
-            return l;
-        });
-
-        setLogs(updatedLogs);
-        triggerToast(`Exit logged for ${targetLog.plate}.`);
-    };
+    // Active logs reshaped to the "card" shape GuardHomeTab expects
+    const recentLogs = useMemo(() => {
+        return activeLogs.slice(0, 8).map((log) => ({
+            id: log.id,
+            plate: log.vehicle_registration || log.guest_registration || '—',
+            driver: log.driver_name || log.guest_name || 'Visitor',
+            zone: log.parking_zone_name || '—',
+            entry: log.entry_time,
+            exit: log.exit_time,
+            status: log.status === 'entered' ? 'Entered' : 'Exited',
+        }));
+    }, [activeLogs]);
 
     const handleManualOccupancyUpdate = (zoneId, newOccupancy) => {
-        const updatedZones = zones.map(z => {
+        const updatedZones = zones.map((z) => {
             if (z.id === zoneId) {
                 return { ...z, occupied: Math.min(z.total, Math.max(0, newOccupancy)) };
             }
             return z;
         });
         setZones(updatedZones);
-        triggerToast(`Occupancy updated manually for zone.`);
+        triggerToast('Occupancy updated manually for zone.');
     };
 
     const handleSignOut = () => {
@@ -263,7 +237,7 @@ export default function SecurityDashboard() {
                                                 <img src={user.image} alt="Profile" className="h-full w-full object-cover" />
                                             ) : (
                                                 <span className="text-xl font-bold text-blue-600">
-                                                    {(user?.name || 'SG').split(' ').map(n => n[0]).join('')}
+                                                    {(user?.name || 'SG').split(' ').map((n) => n[0]).join('')}
                                                 </span>
                                             )}
                                         </div>
@@ -355,7 +329,7 @@ export default function SecurityDashboard() {
                         <GuardHomeTab
                             zones={zones}
                             metrics={metrics}
-                            logs={logs}
+                            logs={recentLogs}
                             setActiveTab={setActiveTab}
                         />
                     )}
@@ -363,17 +337,10 @@ export default function SecurityDashboard() {
                         <RegisterVehicleTab />
                     )}
                     {activeTab === 'entry' && (
-                        <LogEntryTab
-                            zones={zones}
-                            registeredDrivers={registeredDrivers}
-                            onLogEntry={handleLogEntry}
-                        />
+                        <LogEntryTab />
                     )}
                     {activeTab === 'exit' && (
-                        <LogExitTab
-                            logs={logs}
-                            onLogExit={handleLogExit}
-                        />
+                        <LogExitTab />
                     )}
                     {activeTab === 'occupancy' && (
                         <ZoneOccupancyTab
@@ -388,7 +355,7 @@ export default function SecurityDashboard() {
                     )}
                     {activeTab === 'contact' && (
                         <ContactDriverTab
-                            registeredDrivers={registeredDrivers}
+                            registeredDrivers={REGISTERED_DRIVERS}
                             triggerToast={triggerToast}
                         />
                     )}
