@@ -82,6 +82,15 @@ export const uniparkApi = {
     updateGuard: (id, payload) => requestJson(`/api/v1/users/${id}`, { method: 'PATCH', body: payload }),
     deleteGuard: (id) => requestJson(`/api/v1/users/${id}`, { method: 'DELETE' }),
 
+    // Password reset (pre-auth — no CSRF token required)
+    forgotPassword: (email) =>
+        requestJson('/api/v1/auth/forgot-password', { method: 'POST', body: { email } }),
+    resetPassword: (token, newPassword) =>
+        requestJson('/api/v1/auth/reset-password', {
+            method: 'POST',
+            body: { token, new_password: newPassword },
+        }),
+
     // Security: vehicle directory + driver lookup + gate linking
     getAllVehicles: (params = {}) => {
         const query = new URLSearchParams();

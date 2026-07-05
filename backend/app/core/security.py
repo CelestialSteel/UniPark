@@ -103,3 +103,40 @@ def get_user_id_from_token(token: str) -> str:
         return user_id
     except JWTError:
         raise
+
+
+def create_password_reset_token(user_id: str) -> str:
+    """Create a short-lived password-reset JWT (type: 'password_reset')"""
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+    )
+    payload = {"sub": user_id, "type": "password_reset", "exp": expire}
+    try:
+        return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    except Exception as e:
+        logger.error(f"Failed to create password reset token: {e}")
+        raise
+
+
+def verify_password_reset_token(token: str) -> str:
+    """Decode a password-reset JWT and return the user_id string.
+
+    Raises jose.JWTError on any validation failure (expired, bad signature,
+    wrong type), so callers can catch a single exception type.
+    """
+    from jose import JWTError as _JWTError
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    except Exception as e:
+        logger.warning(f"Password reset token validation failed: {e}")
+        raise _JWTError(str(e))
+
+    if payload.get("type") != "password_reset":
+        logger.warning("Password reset token has wrong type")
+        raise _JWTError("Invalid token type")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise _JWTError("Token missing subject")
+
+    return user_id

@@ -152,9 +152,9 @@ export default function LoginPage() {
                         Tip: Click any role tab above to pre-fill test credentials.
                     </p>
                     <p>
-                        <a href="#forgot" className="text-primary hover:text-blue-700">
+                        <Link to="/forgot-password" className="text-primary hover:text-blue-700">
                             Forgot password?
-                        </a>
+                        </Link>
                     </p>
                     <p className="text-gray-600">
                         New to UniPark?{' '}

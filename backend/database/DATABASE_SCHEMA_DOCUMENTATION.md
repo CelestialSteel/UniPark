@@ -417,7 +417,7 @@ Complete system audit trail.
 - ✅ Designate zones (cordone off)
 - ✅ Reserve/unreserve specific spaces
 - ✅ View all analytics and reports
-- ✅ Process infringements
+- ✅ Process overstays
 - ✅ Send notifications
 - ✅ View audit logs
 - ❌ Register vehicles (security only)
@@ -425,7 +425,7 @@ Complete system audit trail.
 #### SECURITY DETAIL
 - ✅ Register new vehicles (link to driver)
 - ✅ Update zone spot counts
-- ✅ Report/flag infringements
+- ✅ Report/flag  overstay infringements
 - ✅ Record vehicle entry/exit
 - ✅ View zone status
 - ❌ Create parking zones (admin only)
@@ -441,8 +441,8 @@ Complete system audit trail.
 - ✅ View own notifications
 - ✅ View parking history
 - ❌ Reserve spaces
-- ❌ Report infringements
-- ❌ Process infringements
+- ❌ Report
+-
 
 ---
 

@@ -1,11 +1,18 @@
 """Authentication Endpoints"""
 from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from pydantic import BaseModel, EmailStr, Field
 from app.core.database import get_db
-from app.core.security import hash_password, create_access_token, create_refresh_token, decode_token, verify_password
+from app.core.security import (
+    hash_password, create_access_token, create_refresh_token,
+    decode_token, verify_password,
+    create_password_reset_token, verify_password_reset_token,
+)
 from app.core.dependencies import get_current_user
 from app.core.config import get_settings
+from app.core.email import send_password_reset_email
 from app.schemas import UserRegisterRequest, UserLoginRequest, TokenResponse, UserResponse
 from app.models import User, Driver, UserRole
 import logging
@@ -229,3 +236,79 @@ async def get_current_user_profile(
 ):
     """Get current user profile"""
     return current_user
+
+
+# ---------------------------------------------------------------------------
+# Password-reset request / confirmation schemas (inline, auth-specific)
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, description="Minimum 8 characters")
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """Request a password-reset link.
+
+    Always returns 200 regardless of whether the email exists so that
+    attackers cannot enumerate registered addresses.
+    """
+    user = db.query(User).filter(User.email == request.email).first()
+
+    if user and user.is_active:
+        reset_token = create_password_reset_token(str(user.id))
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+
+        # Run the (potentially blocking) email send in a thread-pool so we
+        # don't block the async event loop.
+        try:
+            await run_in_threadpool(send_password_reset_email, user.email, reset_link)
+        except Exception:
+            # Do NOT surface email errors to the caller — the 200 must always
+            # be returned to avoid timing-based user enumeration.
+            logger.error(f"Password reset email delivery failed for {user.email}")
+
+    logger.info(f"Password reset requested for: {request.email}")
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """Validate the reset token and set a new password."""
+    from jose import JWTError
+
+    try:
+        user_id = verify_password_reset_token(request.token)
+    except (JWTError, Exception):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset link. Please request a new one.",
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset link. Please request a new one.",
+        )
+
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+
+    logger.info(f"Password reset completed for: {user.email}")
+    return {"message": "Password updated successfully. You can now log in."}
