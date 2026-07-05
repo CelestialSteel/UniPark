@@ -82,6 +82,23 @@ export const uniparkApi = {
     updateGuard: (id, payload) => requestJson(`/api/v1/users/${id}`, { method: 'PATCH', body: payload }),
     deleteGuard: (id) => requestJson(`/api/v1/users/${id}`, { method: 'DELETE' }),
 
+    // Security: vehicle directory + driver lookup + gate linking
+    getAllVehicles: (params = {}) => {
+        const query = new URLSearchParams();
+        if (params.skip) {
+            query.set('skip', String(params.skip));
+        }
+        if (params.limit) {
+            query.set('limit', String(params.limit));
+        }
+        const suffix = query.toString() ? `?${query.toString()}` : '';
+        return requestJson(`/api/v1/vehicles${suffix}`);
+    },
+    lookupDriverByAdmission: (admissionId) =>
+        requestJson(`/api/v1/drivers/by-admission/${encodeURIComponent(admissionId)}`),
+    adminLinkVehicle: (payload) =>
+        requestJson('/api/v1/vehicles/admin-link', { method: 'POST', body: payload }),
+
     // Notification API methods
     getNotifications: ({ unreadOnly = false, skip = 0, limit = 20 } = {}) => {
         const query = new URLSearchParams();

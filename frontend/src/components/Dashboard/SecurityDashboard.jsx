@@ -108,16 +108,9 @@ export default function SecurityDashboard() {
     }, [zones, logs]);
 
     // --- ACTION HANDLERS ---
-    const handleRegisterVehicle = (newDriver) => {
-        // Prevent duplicate plate
-        if (registeredDrivers.some(d => d.plate.toUpperCase() === newDriver.plate.toUpperCase())) {
-            triggerToast(`Plate number ${newDriver.plate.toUpperCase()} is already registered.`);
-            return false;
-        }
-        setRegisteredDrivers([newDriver, ...registeredDrivers]);
-        triggerToast(`Vehicle ${newDriver.plate.toUpperCase()} registered successfully.`);
-        return true;
-    };
+    // Note: vehicle registration is now handled by RegisterVehicleTab via the
+    // backend `POST /api/v1/vehicles/admin-link` endpoint, so no parent
+    // callback is needed.
 
     const handleLogEntry = (plate, zoneName, driverName, role, dept) => {
         // Increment zone occupancy if capacity allows
@@ -367,10 +360,7 @@ export default function SecurityDashboard() {
                         />
                     )}
                     {activeTab === 'register' && (
-                        <RegisterVehicleTab
-                            registeredDrivers={registeredDrivers}
-                            onRegister={handleRegisterVehicle}
-                        />
+                        <RegisterVehicleTab />
                     )}
                     {activeTab === 'entry' && (
                         <LogEntryTab

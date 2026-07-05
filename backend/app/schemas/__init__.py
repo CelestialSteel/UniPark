@@ -156,6 +156,17 @@ class UnlinkVehicleRequest(BaseModel):
     details: Optional[str] = Field(default=None, max_length=500)
 
 
+class AdminLinkVehicleRequest(BaseModel):
+    """Security-initiated vehicle link request.
+
+    A security guard at the gate looks up the driver by admission / staff /
+    faculty ID and links a freshly-seen plate number to that driver.
+    """
+    registration_number: str = Field(..., min_length=1, max_length=50)
+    admission_id: str = Field(..., min_length=1, max_length=50)
+    is_primary: bool = False
+
+
 class VehicleResponse(BaseModel):
     """Vehicle response"""
     id: UUID

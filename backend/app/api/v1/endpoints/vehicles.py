@@ -1,14 +1,99 @@
 """Vehicles Endpoints"""
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_driver_user, get_security_user
-from app.schemas import VehicleResponse, VehicleCreateRequest, LinkVehicleRequest, UnlinkVehicleRequest
+from app.schemas import VehicleResponse, VehicleCreateRequest, LinkVehicleRequest, UnlinkVehicleRequest, AdminLinkVehicleRequest
 from app.models import Vehicle, Driver, User, UserRole, VehicleUnlinkEvent
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _normalize_plate(value: str) -> str:
+    """Uppercase + trim — registration plates are case-insensitive."""
+    return (value or "").strip().upper()
+
+
+def _serialize_directory_entry(vehicle: Vehicle) -> dict:
+    """Vehicle shape used by the security dashboard's Authorized Directory."""
+    driver = vehicle.driver
+    user = driver.user if driver else None
+    full_name = (
+        f"{user.first_name or ''} {user.last_name or ''}".strip()
+        if user else ""
+    ) or (user.email if user else "Unknown Driver")
+
+    # Map a driver's primary ID type to a friendly label.
+    if driver and driver.student_id:
+        id_label, id_value = "Student", driver.student_id
+    elif driver and driver.faculty_id:
+        id_label, id_value = "Lecturer", driver.faculty_id
+    elif driver and driver.staff_id:
+        id_label, id_value = "Staff", driver.staff_id
+    else:
+        id_label, id_value = "Driver", "—"
+
+    return {
+        "id": str(vehicle.id),
+        "plate": vehicle.registration_number,
+        "name": full_name,
+        "email": user.email if user else None,
+        "phone": user.phone_number if user else None,
+        "idNumber": id_value,
+        "idLabel": id_label,
+        "department": driver.department if driver else None,
+        "role": id_label,  # student / faculty / staff mirrors what the UI used to show
+        "is_primary": vehicle.is_primary,
+        "is_active": vehicle.is_active,
+        "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
+    }
+
+
+def _find_driver_by_admission(db: Session, admission_id: str) -> Optional[Driver]:
+    """Look up a driver by student / faculty / staff ID.
+
+    Admission numbers in this system can be either a numeric student ID
+    (e.g. ``184066``) or a prefixed staff/faculty code (e.g. ``SU-4009``).
+    We check all three columns and return the first match.
+    """
+    if not admission_id:
+        return None
+    needle = admission_id.strip()
+    return (
+        db.query(Driver)
+        .filter(
+            (Driver.student_id == needle)
+            | (Driver.faculty_id == needle)
+            | (Driver.staff_id == needle)
+        )
+        .first()
+    )
+
+
+@router.get("", response_model=list[dict])
+async def list_all_vehicles(
+    current_user: User = Depends(get_security_user),
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100,
+):
+    """List every active vehicle in the system (security only).
+
+    Drives the "Authorized Directory" view on the security dashboard.
+    """
+    vehicles = (
+        db.query(Vehicle)
+        .filter(Vehicle.is_active == True)
+        .order_by(Vehicle.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [_serialize_directory_entry(v) for v in vehicles]
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
@@ -130,6 +215,134 @@ async def link_vehicle(
     logger.info(f"Vehicle linked: {new_vehicle.registration_number}")
 
     return new_vehicle
+
+
+@router.post("/admin-link", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def admin_link_vehicle(
+    request: AdminLinkVehicleRequest,
+    current_user: User = Depends(get_security_user),
+    db: Session = Depends(get_db)
+):
+    """Security-initiated vehicle-to-driver link at the gate.
+
+    Flow:
+      1. Look up the driver in the database by their admission / staff / faculty ID.
+         - If no match, return 404 so the security guard can ask the driver to sign up.
+      2. Look up the vehicle by registration number.
+         - If it already exists and is *active* and *linked to a different driver*,
+           return 409 — a car can only be linked to one driver at a time.
+         - If it exists but is inactive (previously unlinked), reactivate it
+           and reassign it to the new driver.
+         - Otherwise create a fresh ``Vehicle`` row.
+      3. If this is the driver's first active vehicle, mark it as primary.
+      4. Return the resulting vehicle plus the resolved driver summary so the
+         security dashboard can update its directory without a follow-up call.
+    """
+    plate = _normalize_plate(request.registration_number)
+    admission_id = (request.admission_id or "").strip()
+
+    # 1. Driver must exist
+    driver = _find_driver_by_admission(db, admission_id)
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No driver is registered with that Admission Number. "
+                "Please ask the driver to sign up first."
+            ),
+        )
+
+    if not driver.user or not driver.user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This driver's account is inactive. Contact an administrator.",
+        )
+
+    # 2. Vehicle must not already be linked to a different active driver
+    existing_vehicle = (
+        db.query(Vehicle)
+        .filter(Vehicle.registration_number == plate)
+        .first()
+    )
+
+    if existing_vehicle and existing_vehicle.is_active and existing_vehicle.driver_id != driver.id:
+        existing_driver_user = (
+            db.query(User).filter(
+                User.id == existing_vehicle.driver.user_id).first()
+            if existing_vehicle.driver else None
+        )
+        owner_name = ""
+        if existing_driver_user:
+            owner_name = (
+                f"{existing_driver_user.first_name or ''} "
+                f"{existing_driver_user.last_name or ''}"
+            ).strip() or existing_driver_user.email
+        detail = (
+            f"Vehicle {plate} is already linked to another driver"
+            + (f" ({owner_name})." if owner_name else ".")
+            + " A car can only be linked to one driver at a time."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail,
+        )
+
+    # 3. Re-link or create
+    if existing_vehicle:
+        existing_vehicle.driver_id = driver.id
+        existing_vehicle.is_active = True
+        existing_vehicle.registered_by_user_id = current_user.id
+        vehicle = existing_vehicle
+        logger.info(
+            "Vehicle re-linked by security: %s -> driver %s",
+            plate, driver.id,
+        )
+    else:
+        vehicle = Vehicle(
+            driver_id=driver.id,
+            registration_number=plate,
+            make="",
+            model="",
+            is_primary=request.is_primary,
+            is_active=True,
+            registered_by_user_id=current_user.id,
+        )
+        db.add(vehicle)
+        db.flush()
+        logger.info(
+            "Vehicle linked by security: %s -> driver %s",
+            plate, driver.id,
+        )
+
+    # 4. Auto-promote to primary if the driver has no other active vehicle
+    other_active = (
+        db.query(Vehicle)
+        .filter(
+            Vehicle.driver_id == driver.id,
+            Vehicle.is_active == True,
+            Vehicle.id != vehicle.id,
+        )
+        .count()
+    )
+    if other_active == 0:
+        vehicle.is_primary = True
+
+    db.commit()
+    db.refresh(vehicle)
+
+    return {
+        "message": f"Vehicle {plate} linked successfully.",
+        "vehicle": _serialize_directory_entry(vehicle),
+        "driver": {
+            "driver_id": str(driver.id),
+            "name": (
+                f"{driver.user.first_name or ''} {driver.user.last_name or ''}"
+            ).strip() or driver.user.email,
+            "email": driver.user.email,
+            "phone": driver.user.phone_number,
+            "admission_id": admission_id,
+        },
+    }
 
 
 @router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)

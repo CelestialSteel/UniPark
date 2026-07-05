@@ -76,33 +76,30 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => { setRole('driver'); setEmail('12345'); setPassword('12345678'); }}
-                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
-                                    role === 'driver'
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${role === 'driver'
                                         ? 'bg-white text-blue-700 shadow-xs'
                                         : 'text-gray-600 hover:text-slate-900'
-                                }`}
+                                    }`}
                             >
                                 Driver
                             </button>
                             <button
                                 type="button"
-                                onClick={() => { setRole('guard'); setEmail('guard@unipark.ac.ke'); setPassword('guard123'); }}
-                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
-                                    role === 'guard'
+                                onClick={() => { setRole('guard'); setEmail('guard@unipark.ac.ke'); setPassword('Guard@2026'); }}
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${role === 'guard'
                                         ? 'bg-white text-blue-700 shadow-xs'
                                         : 'text-gray-600 hover:text-slate-900'
-                                }`}
+                                    }`}
                             >
                                 Security
                             </button>
                             <button
                                 type="button"
                                 onClick={() => { setRole('admin'); setEmail('admin@unipark.ac.ke'); setPassword('admin123'); }}
-                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
-                                    role === 'admin'
+                                className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${role === 'admin'
                                         ? 'bg-white text-blue-700 shadow-xs'
                                         : 'text-gray-600 hover:text-slate-900'
-                                }`}
+                                    }`}
                             >
                                 Admin
                             </button>

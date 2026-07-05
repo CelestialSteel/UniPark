@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_driver_user, get_admin_user
+from app.core.dependencies import get_current_user, get_driver_user, get_admin_user, get_security_user
 from app.core.security import hash_password, verify_password
 from app.models import Driver, User, UserRole, Vehicle, VehicleLog
 from app.schemas import (
@@ -21,7 +21,8 @@ router = APIRouter()
 
 def serialize_driver_profile(driver: Driver, current_user: User) -> dict:
     """Convert a driver profile into the frontend display shape."""
-    full_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
+    full_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip(
+    ) or current_user.email
 
     return {
         "driver_id": str(driver.id),
@@ -81,15 +82,15 @@ async def get_driver_profile(
     db: Session = Depends(get_db)
 ):
     """Get driver profile"""
-    
+
     driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver profile not found"
         )
-    
+
     return serialize_driver_profile(driver, current_user)
 
 
@@ -137,6 +138,73 @@ async def update_driver_profile(
     return serialize_driver_profile(driver, current_user)
 
 
+@router.get("/by-admission/{admission_id}", response_model=dict)
+async def lookup_driver_by_admission(
+    admission_id: str,
+    current_user: User = Depends(get_security_user),
+    db: Session = Depends(get_db)
+):
+    """Look up a driver by admission / staff / faculty ID (security only).
+
+    Used by the gate "Register Vehicle" form to confirm that the driver is
+    already in the system before linking a freshly-seen plate to them.
+    """
+    needle = (admission_id or "").strip()
+    if not needle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admission number is required.",
+        )
+
+    driver = (
+        db.query(Driver)
+        .filter(
+            (Driver.student_id == needle)
+            | (Driver.faculty_id == needle)
+            | (Driver.staff_id == needle)
+        )
+        .first()
+    )
+
+    if not driver or not driver.user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No driver is registered with that Admission Number. "
+                "Please ask the driver to sign up first."
+            ),
+        )
+
+    user = driver.user
+
+    # Determine which column the match came from, so the UI can render the
+    # right ID label (Student / Lecturer / Staff).
+    if driver.student_id == needle:
+        id_label = "Student"
+    elif driver.faculty_id == needle:
+        id_label = "Lecturer"
+    elif driver.staff_id == needle:
+        id_label = "Staff"
+    else:
+        id_label = "Driver"
+
+    full_name = (
+        f"{user.first_name or ''} {user.last_name or ''}"
+    ).strip() or user.email
+
+    return {
+        "driver_id": str(driver.id),
+        "user_id": str(user.id),
+        "name": full_name,
+        "email": user.email,
+        "phone": user.phone_number,
+        "department": driver.department,
+        "admission_id": needle,
+        "id_label": id_label,
+        "is_active": user.is_active,
+    }
+
+
 @router.get("/vehicles", response_model=list[DriverVehicleResponse])
 async def list_driver_vehicles(
     current_user: User = Depends(get_driver_user),
@@ -152,7 +220,8 @@ async def list_driver_vehicles(
             detail="Driver profile not found"
         )
 
-    vehicles = db.query(Vehicle).filter(Vehicle.driver_id == driver.id).order_by(Vehicle.is_primary.desc(), Vehicle.created_at.desc()).all()
+    vehicles = db.query(Vehicle).filter(Vehicle.driver_id == driver.id).order_by(
+        Vehicle.is_primary.desc(), Vehicle.created_at.desc()).all()
     return [serialize_vehicle(vehicle) for vehicle in vehicles]
 
 
@@ -183,7 +252,6 @@ async def list_driver_logs(
     )
 
     return [serialize_driver_log(log) for log in logs]
-
 
 
 @router.patch("/password", status_code=status.HTTP_200_OK)
@@ -217,22 +285,22 @@ async def get_driver(
     db: Session = Depends(get_db)
 ):
     """Get driver details (admin only or self)"""
-    
+
     driver = db.query(Driver).filter(Driver.id == driver_id).first()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver not found"
         )
-    
+
     # Only admin or the driver themselves can view
     if current_user.role != UserRole.ADMIN and driver.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to view this driver"
         )
-    
+
     user = driver.user
     return {
         "driver_id": str(driver.id),
@@ -259,9 +327,9 @@ async def list_drivers(
     limit: int = 10
 ):
     """List all drivers (admin only)"""
-    
+
     drivers = db.query(Driver).offset(skip).limit(limit).all()
-    
+
     result = []
     for driver in drivers:
         user = driver.user
@@ -277,7 +345,7 @@ async def list_drivers(
             "department": driver.department,
             "is_active": user.is_active
         })
-    
+
     return result
 
 
@@ -289,20 +357,20 @@ async def suspend_driver(
     db: Session = Depends(get_db)
 ):
     """Suspend driver (admin only)"""
-    
+
     driver = db.query(Driver).filter(Driver.id == driver_id).first()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver not found"
         )
-    
+
     driver.user.is_active = False
     db.commit()
-    
+
     logger.info(f"Driver suspended: {driver.user.email} - Reason: {reason}")
-    
+
     return {"message": "Driver suspended successfully"}
 
 
@@ -313,18 +381,18 @@ async def activate_driver(
     db: Session = Depends(get_db)
 ):
     """Activate driver (admin only)"""
-    
+
     driver = db.query(Driver).filter(Driver.id == driver_id).first()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver not found"
         )
-    
+
     driver.user.is_active = True
     db.commit()
-    
+
     logger.info(f"Driver activated: {driver.user.email}")
-    
+
     return {"message": "Driver activated successfully"}
