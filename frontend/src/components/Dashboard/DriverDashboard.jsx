@@ -8,6 +8,7 @@ import DriverHomeTab from './Driver/DriverHomeTab';
 import DriverZonesTab from './Driver/DriverZonesTab';
 import DriverLogsTab from './Driver/DriverLogsTab';
 import DriverProfileTab from './Driver/DriverProfileTab';
+import NotificationBell from './Driver/NotificationBell';
 
 const NAV_ITEMS = [
     {
@@ -79,18 +80,8 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Notification Bell */}
-                    <button
-                        onClick={() => alert('Notifications: You have no unread parking alerts.')}
-                        type="button"
-                        className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:text-gray-700 transition hover:bg-slate-100 cursor-pointer"
-                        title="Notifications"
-                    >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
-                        </svg>
-                        <span className="absolute top-2.5 right-2.5 flex h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
-                    </button>
+                    {/* Notification Bell (live, backend-connected) */}
+                    <NotificationBell />
 
                     {/* User Profile Dropdown */}
                     <div className="relative">
@@ -167,8 +158,8 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer ${activeTab === item.id
-                                    ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
-                                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                                ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
+                                : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
                                 }`}
                         >
                             <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,8 +188,8 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                         <button
                             onClick={() => setActiveTab('profile')}
                             className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition cursor-pointer mb-1 ${activeTab === 'profile'
-                                    ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
-                                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                                ? 'bg-blue-700 text-white font-semibold shadow-md shadow-blue-700/10'
+                                : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
                                 }`}
                         >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

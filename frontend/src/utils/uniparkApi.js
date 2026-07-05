@@ -81,4 +81,20 @@ export const uniparkApi = {
     addGuard: (payload) => requestJson('/api/v1/auth/register', { method: 'POST', body: { ...payload, role: 'security' } }),
     updateGuard: (id, payload) => requestJson(`/api/v1/users/${id}`, { method: 'PATCH', body: payload }),
     deleteGuard: (id) => requestJson(`/api/v1/users/${id}`, { method: 'DELETE' }),
+
+    // Notification API methods
+    getNotifications: ({ unreadOnly = false, skip = 0, limit = 20 } = {}) => {
+        const query = new URLSearchParams();
+        if (unreadOnly) {
+            query.set('unread_only', 'true');
+        }
+        if (skip) {
+            query.set('skip', String(skip));
+        }
+        query.set('limit', String(limit));
+        return requestJson(`/api/v1/notifications?${query.toString()}`);
+    },
+    getUnreadNotificationCount: () => requestJson('/api/v1/notifications/unread-count'),
+    markNotificationAsRead: (id) => requestJson(`/api/v1/notifications/${id}/mark-as-read`, { method: 'POST' }),
+    markAllNotificationsAsRead: () => requestJson('/api/v1/notifications/mark-all-as-read', { method: 'POST' }),
 };
