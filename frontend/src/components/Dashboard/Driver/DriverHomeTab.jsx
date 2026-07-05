@@ -1,89 +1,94 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { uniparkApi } from '../../../utils/uniparkApi';
 
-function StatBox({ label, value }) {
+function StatBox({ label, value, tone = 'default' }) {
+    const valueClass =
+        tone === 'muted'
+            ? 'text-slate-500'
+            : tone === 'strong'
+                ? 'text-blue-700'
+                : 'text-slate-800';
     return (
         <div className="rounded-xl bg-slate-50 px-4 py-3 shadow-xs border border-slate-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-            <p className="mt-1 text-sm font-bold text-slate-800">{value}</p>
+            <p className={`mt-1 text-sm font-bold ${valueClass}`}>{value}</p>
         </div>
     );
 }
 
+/**
+ * Formats a duration in milliseconds as ``HH:MM:SS`` (or ``MM:SS`` if under an hour).
+ */
+function formatDurationHMS(ms) {
+    if (!Number.isFinite(ms) || ms < 0) {
+        return '00:00:00';
+    }
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    if (hours > 0) {
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+}
+
+function formatClock(dateValue) {
+    if (!dateValue) {
+        return 'N/A';
+    }
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+        return 'N/A';
+    }
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatFriendlyDuration(minutes) {
+    if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) {
+        return '0m';
+    }
+    const totalMinutes = Math.max(0, Number(minutes));
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    if (hours === 0) {
+        return `${remainingMinutes}m`;
+    }
+    return `${hours}h ${remainingMinutes}m`;
+}
+
+/**
+ * Find the driver's currently-active log if one exists.
+ *
+ * An active log is a `vehicle_log` row with `status === 'entered'` and
+ * `exit_time` still null. The driver's logs endpoint already returns them
+ * in `entry_time desc` order, so the first match is the latest session.
+ */
+function findActiveLog(logs) {
+    if (!Array.isArray(logs)) {
+        return null;
+    }
+    return logs.find((log) => log.status === 'entered' && !log.exit_time) || null;
+}
+
 export default function DriverHomeTab({ user, setActiveTab }) {
-    const [duration, setDuration] = useState('01:27:12');
     const [driverProfile, setDriverProfile] = useState(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [profileError, setProfileError] = useState('');
     const [recentActivities, setRecentActivities] = useState([]);
+    const [activeLog, setActiveLog] = useState(null);
+    const [now, setNow] = useState(() => Date.now());
 
-    const formatClock = (dateValue) => {
-        if (!dateValue) {
-            return 'N/A';
-        }
-
-        const date = new Date(dateValue);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    const formatDuration = (minutes) => {
-        if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) {
-            return '0m';
-        }
-
-        const totalMinutes = Math.max(0, Number(minutes));
-        const hours = Math.floor(totalMinutes / 60);
-        const remainingMinutes = totalMinutes % 60;
-
-        if (hours === 0) {
-            return `${remainingMinutes}m`;
-        }
-
-        return `${hours}h ${remainingMinutes}m`;
-    };
-
-    const mapLogToActivity = (log) => {
-        const entryDate = log.entry_time ? new Date(log.entry_time) : null;
-        const exitDate = log.exit_time ? new Date(log.exit_time) : null;
-        const isActive = !exitDate && log.status === 'entered';
-        const computedMinutes = isActive && entryDate ? Math.max(0, Math.round((Date.now() - entryDate.getTime()) / 60000)) : log.duration_minutes;
-        const timeLabel = isActive
-            ? `In: ${formatClock(entryDate)}`
-            : exitDate
-                ? `${formatClock(entryDate)} - ${formatClock(exitDate)}`
-                : formatClock(entryDate);
-
-        return {
-            zone: log.parking_zone_name || log.parking_zone_code || 'Parking Zone',
-            date: entryDate ? entryDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today',
-            duration: isActive ? `${formatDuration(computedMinutes)} elapsed` : `${formatDuration(computedMinutes)} total`,
-            status: isActive ? 'ACTIVE' : log.status === 'denied' ? 'DENIED' : 'COMPLETED',
-            entryLabel: timeLabel,
-            vehicle: log.vehicle_registration || 'Linked Vehicle',
-            plate: log.vehicle_registration || 'N/A',
-            location: log.parking_zone_code || log.parking_zone_name || 'Campus Zone',
-        };
-    };
-
-    // Simulate ticking parking duration
+    // Tick once a second only while there is an active log so the timer
+    // reflects real elapsed time since the vehicle entered.
     useEffect(() => {
-        const interval = setInterval(() => {
-            const parts = duration.split(':').map(Number);
-            let h = parts[0], m = parts[1], s = parts[2];
-            s++;
-            if (s >= 60) {
-                s = 0;
-                m++;
-                if (m >= 60) {
-                    m = 0;
-                    h++;
-                }
-            }
-            const pad = (n) => String(n).padStart(2, '0');
-            setDuration(`${pad(h)}:${pad(m)}:${pad(s)}`);
-        }, 1000);
+        if (!activeLog) {
+            return undefined;
+        }
+        const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
-    }, [duration]);
+    }, [activeLog]);
 
     useEffect(() => {
         let isMounted = true;
@@ -95,17 +100,19 @@ export default function DriverHomeTab({ user, setActiveTab }) {
 
                 const [profile, logs] = await Promise.all([
                     uniparkApi.getDriverProfile(),
-                    uniparkApi.getDriverLogs({ limit: 3 }),
+                    uniparkApi.getDriverLogs({ limit: 20 }),
                 ]);
 
                 if (isMounted) {
                     setDriverProfile(profile);
-                    setRecentActivities(logs.map(mapLogToActivity));
+                    setRecentActivities((logs || []).slice(0, 3).map(mapLogToActivity));
+                    setActiveLog(findActiveLog(logs));
                 }
             } catch (error) {
                 if (isMounted) {
                     setDriverProfile(null);
                     setRecentActivities([]);
+                    setActiveLog(null);
                     setProfileError(error.message || 'Vehicle status is unavailable right now.');
                 }
             } finally {
@@ -122,8 +129,50 @@ export default function DriverHomeTab({ user, setActiveTab }) {
         };
     }, []);
 
+    const mapLogToActivity = (log) => {
+        const entryDate = log.entry_time ? new Date(log.entry_time) : null;
+        const exitDate = log.exit_time ? new Date(log.exit_time) : null;
+        const isActive = !exitDate && log.status === 'entered';
+        const computedMinutes = isActive && entryDate
+            ? Math.max(0, Math.round((now - entryDate.getTime()) / 60000))
+            : log.duration_minutes;
+        const timeLabel = isActive
+            ? `In: ${formatClock(entryDate)}`
+            : exitDate
+                ? `${formatClock(entryDate)} - ${formatClock(exitDate)}`
+                : formatClock(entryDate);
+
+        return {
+            zone: log.parking_zone_name || log.parking_zone_code || 'Parking Zone',
+            date: entryDate ? entryDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today',
+            duration: isActive ? `${formatFriendlyDuration(computedMinutes)} elapsed` : `${formatFriendlyDuration(computedMinutes)} total`,
+            status: isActive ? 'ACTIVE' : log.status === 'denied' ? 'DENIED' : 'COMPLETED',
+            entryLabel: timeLabel,
+            vehicle: log.vehicle_registration || 'Linked Vehicle',
+            plate: log.vehicle_registration || 'N/A',
+            location: log.parking_zone_code || log.parking_zone_name || 'Campus Zone',
+        };
+    };
+
     const activeVehicleCount = driverProfile?.active_vehicles ?? 0;
     const hasLinkedVehicle = activeVehicleCount > 0;
+
+    // Compute live values for the on-campus card from the active log.
+    const liveValues = useMemo(() => {
+        if (!activeLog) {
+            return null;
+        }
+        const entryDate = new Date(activeLog.entry_time);
+        const elapsedMs = Number.isNaN(entryDate.getTime()) ? 0 : Math.max(0, now - entryDate.getTime());
+        return {
+            zoneName: activeLog.parking_zone_name || activeLog.parking_zone_code || 'a campus zone',
+            zoneCode: activeLog.parking_zone_code || '',
+            plate: activeLog.vehicle_registration || 'Linked Vehicle',
+            checkedInAt: formatClock(entryDate),
+            duration: formatDurationHMS(elapsedMs),
+            isActive: true,
+        };
+    }, [activeLog, now]);
 
     return (
         <div className="space-y-6">
@@ -137,38 +186,58 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                 </div>
             </div>
 
-            {/* Active Parking Session */}
+            {/* Vehicle status card */}
             {isLoadingProfile ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <p className="text-sm font-semibold text-slate-700">Loading your vehicle status...</p>
                 </div>
-            ) : hasLinkedVehicle ? (
+            ) : liveValues ? (
+                // On-campus: show the live "Parked in {zone}" card
                 <div className="rounded-2xl border-2 border-blue-700 bg-white p-6 shadow-sm">
                     <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700">
                         <span className="h-2 w-2 rounded-full bg-blue-700 animate-pulse" />
-                        Current Active Session
+                        Parked in {liveValues.zoneName}
                     </div>
-                    <h2 className="text-xl font-bold text-slate-800">Vehicle linked successfully</h2>
+                    <h2 className="text-xl font-bold text-slate-800">
+                        Your vehicle is currently parked in {liveValues.zoneName}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Plate <span className="font-mono font-semibold text-slate-700">{liveValues.plate}</span>
+                        {liveValues.zoneCode ? (
+                            <>
+                                {' '}
+                                &middot; Zone code <span className="font-mono font-semibold text-slate-700">{liveValues.zoneCode}</span>
+                            </>
+                        ) : null}
+                    </p>
 
-                    <div className="mt-6 grid gap-4 md:grid-cols-[repeat(3,minmax(0,1fr))_auto] md:items-center">
+                    <div className="mt-6 grid gap-4 md:grid-cols-3 md:items-center">
+                        <StatBox label="Checked In At" value={liveValues.checkedInAt} />
+                        <StatBox label="Current Duration" value={liveValues.duration} tone="strong" />
+                        <StatBox label="Status" value="On Campus" />
+                    </div>
+                </div>
+            ) : hasLinkedVehicle ? (
+                // Linked but not currently on campus
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <span className="h-2 w-2 rounded-full bg-slate-400" />
+                        Off Campus
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800">Your vehicle is not in Strathmore</h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                        We have not recorded an active entry for any of your linked vehicles. The duration timer will start
+                        automatically once security logs your vehicle in at the gate.
+                    </p>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-3 md:items-center">
                         <StatBox label="Linked Vehicles" value={`${activeVehicleCount} active`} />
-                        <StatBox label="Checked In At" value="Available after entry log" />
-                        <StatBox label="Current Duration" value={duration} />
-
-                        <button
-                            onClick={() => alert('Car locator beacon triggered! GPS coordinates sent to your device.')}
-                            type="button"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 px-6 py-3.5 font-bold text-white shadow-lg shadow-blue-500/15 transition cursor-pointer md:self-center"
-                        >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Find My Car
-                        </button>
+                        <StatBox label="Last Seen" value="No active session" tone="muted" />
+                        <StatBox label="Status" value="Off Campus" tone="muted" />
                     </div>
                 </div>
             ) : (
+                // No vehicles linked at all
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 shadow-sm">
                     <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                         <span className="h-2 w-2 rounded-full bg-slate-400" />
@@ -176,7 +245,7 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                     </div>
                     <h2 className="text-xl font-bold text-slate-800">You do not have a vehicle linked to your account yet.</h2>
                     <p className="mt-2 text-sm text-slate-500">
-                        Vehicle details will stay hidden until you link a car in the database.
+                        Vehicle details will stay hidden until a security guard links a car to your account at the gate.
                     </p>
                     {profileError && (
                         <p className="mt-3 text-sm text-amber-700">{profileError}</p>
@@ -266,20 +335,26 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                     <h3 className="text-lg font-bold text-slate-800">Recent Activity</h3>
 
                     <div className="space-y-3.5 divide-y divide-slate-50">
-                        {recentActivities.map((act, index) => (
-                            <div key={index} className="pt-3 first:pt-0 flex justify-between items-center text-xs">
-                                <div>
-                                    <h4 className="font-bold text-slate-800">{act.zone}</h4>
-                                    <p className="text-gray-400 font-medium mt-0.5">{act.date} &bull; {act.duration}</p>
-                                </div>
-                                <span className={`px-2 py-0.5 rounded font-bold border text-[9px] ${act.status === 'COMPLETED'
+                        {recentActivities.length === 0 ? (
+                            <p className="text-xs text-gray-400">No recent parking activity yet.</p>
+                        ) : (
+                            recentActivities.map((act, index) => (
+                                <div key={index} className="pt-3 first:pt-0 flex justify-between items-center text-xs">
+                                    <div>
+                                        <h4 className="font-bold text-slate-800">{act.zone}</h4>
+                                        <p className="text-gray-400 font-medium mt-0.5">{act.date} &bull; {act.duration}</p>
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded font-bold border text-[9px] ${act.status === 'COMPLETED'
                                         ? 'bg-slate-50 border-slate-200 text-slate-500'
-                                        : 'bg-red-50 border-red-100 text-red-700'
-                                    }`}>
-                                    {act.status}
-                                </span>
-                            </div>
-                        ))}
+                                        : act.status === 'ACTIVE'
+                                            ? 'bg-blue-50 border-blue-100 text-blue-700'
+                                            : 'bg-red-50 border-red-100 text-red-700'
+                                        }`}>
+                                        {act.status}
+                                    </span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
