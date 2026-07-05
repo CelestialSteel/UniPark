@@ -11,6 +11,63 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/reservations", response_model=list[dict])
+async def list_reservations(
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """List all reserved parking spaces with zone details (admin only)."""
+    spaces = (
+        db.query(ParkingSpace)
+        .filter(ParkingSpace.status == "reserved")
+        .order_by(ParkingSpace.created_at.desc())
+        .all()
+    )
+    result = []
+    for s in spaces:
+        zone = db.query(ParkingZone).filter(ParkingZone.id == s.zone_id).first()
+        result.append({
+            "id": str(s.id),
+            "zone": zone.zone_name if zone else "Unknown",
+            "zone_id": str(s.zone_id),
+            "space_number": s.space_number,
+            "event": s.cordoned_reason or "Event Reservation",
+            "date": s.created_at.strftime("%Y-%m-%d") if s.created_at else None,
+            "spaces": 1,
+            "status": "Approved",
+        })
+    return result
+
+
+@router.delete("/reservations/{space_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_reservation(
+    space_id: str,
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel a single space reservation and release it back to available (admin only)."""
+    space = db.query(ParkingSpace).filter(ParkingSpace.id == space_id).first()
+    if not space:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Space not found")
+    if space.status != "reserved":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Space is not reserved")
+
+    space.status = "available"
+    space.reserved_for_user_id = None
+    space.cordoned_reason = None
+
+    # Update zone reserved_spaces counter
+    zone = db.query(ParkingZone).filter(ParkingZone.id == space.zone_id).first()
+    if zone and zone.reserved_spaces > 0:
+        zone.reserved_spaces -= 1
+
+    db.commit()
+    logger.info(f"Reservation cancelled: space {space.space_number}")
+    return None
+
+
+
+
 @router.get("/zone/{zone_id}", response_model=list[ParkingSpaceResponse])
 async def list_spaces_in_zone(
     zone_id: str,
@@ -128,6 +185,15 @@ async def reserve_space(
     
     logger.info(f"Space reserved: {space.space_number}")
     
+    # Notify driver via email and DB notification
+    try:
+        from app.services.notification_service import NotificationService
+        zone = db.query(ParkingZone).filter(ParkingZone.id == space.zone_id).first()
+        if zone:
+            await NotificationService.notify_reservation(db=db, driver_user_id=driver_id, space=space, zone=zone)
+    except Exception as e:
+        logger.error(f"Failed to send reservation notification: {e}")
+        
     return space
 
 

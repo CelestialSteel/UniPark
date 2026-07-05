@@ -131,4 +131,37 @@ export const uniparkApi = {
         requestJson('/api/v1/logs/entry', { method: 'POST', body: payload }),
     logVehicleExit: (payload) =>
         requestJson('/api/v1/logs/exit', { method: 'POST', body: payload }),
-};
+
+    // Admin: zone cordon / release
+    cordonZone: (zoneId) =>
+        requestJson(`/api/v1/zones/${zoneId}/cordone`, { method: 'POST' }),
+    releaseZone: (zoneId) =>
+        requestJson(`/api/v1/zones/${zoneId}/release`, { method: 'POST' }),
+
+    // Admin: zone-level bulk event reservations
+    bulkReserveZone: (zoneId, { eventName, numSpaces, eventDate } = {}) => {
+        const params = new URLSearchParams();
+        params.set('event_name', eventName || 'Event Reservation');
+        params.set('num_spaces', String(numSpaces || 5));
+        if (eventDate) params.set('event_date', eventDate);
+        return requestJson(`/api/v1/zones/${zoneId}/reserve?${params.toString()}`, { method: 'POST' });
+    },
+
+    // Admin: list + cancel individual space reservations
+    getReservations: () => requestJson('/api/v1/spaces/reservations'),
+    cancelReservation: (spaceId) =>
+        requestJson(`/api/v1/spaces/reservations/${spaceId}`, { method: 'DELETE' }),
+
+    // Admin: alerts (announcements)
+    getAlerts: () => requestJson('/api/v1/alerts'),
+    createAlert: (payload) =>
+        requestJson('/api/v1/alerts', { method: 'POST', body: payload }),
+    resolveAlert: (alertId, notes = 'Dismissed by admin') =>
+        requestJson(`/api/v1/alerts/${alertId}/resolve?resolution_notes=${encodeURIComponent(notes)}`, { method: 'PATCH' }),
+
+    // Admin: driver lookup by plate
+    lookupByPlate: (plate) => {
+        const params = new URLSearchParams({ plate });
+        return requestJson(`/api/v1/vehicles?${params.toString()}`);
+    },
+};

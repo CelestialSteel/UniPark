@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ASSETS } from '../../constants/assets';
@@ -14,44 +14,6 @@ import AnalyticsTab from './Admin/AnalyticsTab';
 import ProfileTab from './Admin/ProfileTab';
 import GuardManagementPage from './Admin/GuardManagementPage';
 import { uniparkApi } from '../../utils/uniparkApi';
-
-// --- MOCK SEED DATA ---
-const INITIAL_ZONES = [
-    { id: '1', name: 'Phase 1 Lot', code: 'P1', total: 150, occupied: 112, reserved: 15, cordoned: 5, status: 'active' },
-    { id: '2', name: 'Phase 2 Lot', code: 'P2', total: 120, occupied: 45, reserved: 5, cordoned: 0, status: 'active' },
-    { id: '3', name: 'Oval Building Lot', code: 'Oval', total: 15, occupied: 10, reserved: 3, cordoned: 0, status: 'active' },
-    { id: '4', name: 'Library Lot', code: 'LIB', total: 90, occupied: 86, reserved: 2, cordoned: 2, status: 'active' },
-    { id: '5', name: 'Management Lot', code: 'MGT', total: 40, occupied: 15, reserved: 20, cordoned: 0, status: 'active' },
-    { id: '6', name: 'Sports Complex Lot', code: 'SPC', total: 100, occupied: 12, reserved: 0, cordoned: 45, status: 'active' },
-];
-
-const INITIAL_RESERVATIONS = [
-    { id: 'res-1', zone: 'Sports Complex Lot', event: 'Inter-University Rugby Match', date: '2026-06-25', spaces: 40, status: 'Approved' },
-    { id: 'res-2', zone: 'Management Lot', event: 'University Council AGM', date: '2026-06-23', spaces: 15, status: 'Approved' },
-    { id: 'res-3', zone: 'Library Lot', event: 'Guest Lecturer parking', date: '2026-06-24', spaces: 2, status: 'Pending' },
-];
-
-const INITIAL_LOGS = [
-    { id: 'log-1', plate: 'KDC 456X', driver: 'Dalton Muindi', zone: 'Phase 1 Lot', entry: '2026-06-22 08:15 AM', exit: '--', status: 'Entered' },
-    { id: 'log-2', plate: 'KBB 123A', driver: 'Griffin Sitati', zone: 'Library Lot', entry: '2026-06-22 07:30 AM', exit: '2026-06-22 11:45 AM', status: 'Exited' },
-    { id: 'log-3', plate: 'KCA 789B', driver: 'Prof. Anthony Khajira', zone: 'Management Lot', entry: '2026-06-22 09:00 AM', exit: '--', status: 'Entered' },
-    { id: 'log-4', plate: 'KDD 555Y', driver: 'Sharon Wambui', zone: 'Sports Complex Lot', entry: '2026-06-22 06:15 AM', exit: '2026-06-22 10:30 AM', status: 'Exited' },
-    { id: 'log-5', plate: 'KAA 999Z', driver: 'David Ochieng', zone: 'Phase 2 Lot', entry: '2026-06-21 07:45 AM', exit: '--', status: 'Entered' },
-    { id: 'log-6', plate: 'KCC 888H', driver: 'Mercy Njoroge', zone: 'Oval Building Lot', entry: '2026-06-20 14:00 PM', exit: '--', status: 'Entered' },
-];
-
-const INITIAL_ANNOUNCEMENTS = [
-    { id: 'ann-1', title: 'Sports Complex Lot Cordoned', message: 'The Sports Complex Lot has been cordoned off (40 spaces) for preparation of the inter-university rugby cup match.', severity: 'medium', date: '2026-06-22' },
-    { id: 'ann-2', title: 'Library Lot Maintenance', message: 'Avoid the library access lane due to tarmac cleaning activities.', severity: 'low', date: '2026-06-21' },
-];
-
-const REGISTERED_DRIVERS = [
-    { plate: 'KDC 456X', name: 'Dalton Muindi', email: 'dalton.muindi@strathmore.edu', idNumber: '184066', phone: '+254 712 345678', department: 'Faculty of IT', role: 'Student' },
-    { plate: 'KBB 123A', name: 'Griffin Sitati', email: 'griffin.sitati@strathmore.edu', idNumber: '191613', phone: '+254 722 987654', department: 'School of Computing', role: 'Student' },
-    { plate: 'KCA 789B', name: 'Anthony Khajira', email: 'akhajira@strathmore.ac.ke', idNumber: 'SU-4009', phone: '+254 733 111222', department: 'Academic Staff', role: 'Faculty' },
-    { plate: 'KAA 999Z', name: 'David Ochieng', email: 'dochieng@strathmore.edu', idNumber: '175560', phone: '+254 701 999888', department: 'Business School', role: 'Student' },
-    { plate: 'KCC 888H', name: 'Mercy Njoroge', email: 'mnjoroge@strathmore.ac.ke', idNumber: 'SU-5034', phone: '+254 715 444333', department: 'Finance Office', role: 'Staff' },
-];
 
 // Sidebar navigation items config
 const NAV_ITEMS = [
@@ -87,7 +49,6 @@ const NAV_ITEMS = [
         id: 'analytics', label: 'Analytics & Reports',
         icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
     },
-
 ];
 
 export default function AdminDashboard() {
@@ -96,19 +57,25 @@ export default function AdminDashboard() {
 
     // --- SHARED STATE ---
     const [activeTab, setActiveTab] = useState('overview');
-    const [zones, setZones] = useState(INITIAL_ZONES);
-    const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
-    const [logs, setLogs] = useState(INITIAL_LOGS);
-    const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
+    const [zones, setZones] = useState([]);
+    const [reservations, setReservations] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [announcements, setAnnouncements] = useState([]);
     const [overstayThreshold, setOverstayThreshold] = useState(1440);
+    const [loading, setLoading] = useState(true);
 
-    // Lookup cross-tab navigation state (passed down to OverstaysTab)
+    // Lookup cross-tab navigation state
     const [lookupPlate, setLookupPlate] = useState('');
     const [searchedDriver, setSearchedDriver] = useState(null);
 
     // Toast state
     const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState('success'); // 'success' | 'error'
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+    const pollIntervalRef = useRef(null);
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     const formatDateTime = (value) => {
         if (!value) return '--';
@@ -121,9 +88,7 @@ export default function AdminDashboard() {
         const totalMinutes = Math.max(0, Math.round(Number(minutes)));
         const hours = Math.floor(totalMinutes / 60);
         const remainingMinutes = totalMinutes % 60;
-        if (hours === 0) {
-            return `${remainingMinutes}m`;
-        }
+        if (hours === 0) return `${remainingMinutes}m`;
         return `${hours}h ${remainingMinutes}m`;
     };
 
@@ -151,38 +116,72 @@ export default function AdminDashboard() {
         entryTimeValue: log.entry_time,
     });
 
-    const triggerToast = (msg) => {
+    const mapAlert = (alert) => ({
+        id: String(alert.id),
+        title: alert.alert_type,
+        message: alert.message,
+        severity: alert.severity || 'low',
+        date: alert.created_at ? new Date(alert.created_at).toISOString().split('T')[0] : '--',
+        zoneId: String(alert.parking_zone_id),
+        isActive: alert.is_active,
+    });
+
+    const triggerToast = useCallback((msg, type = 'success') => {
         setToastMessage(msg);
-        setTimeout(() => setToastMessage(''), 3000);
-    };
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadDashboardData = async () => {
-            try {
-                const [zoneOccupancy, vehicleLogs] = await Promise.all([
-                    uniparkApi.getZoneOccupancy(),
-                    uniparkApi.getVehicleLogs(),
-                ]);
-
-                if (!isMounted) return;
-
-                setZones(zoneOccupancy.map(mapZone));
-                setLogs(vehicleLogs.map(mapLog));
-            } catch (error) {
-                console.warn('Using dashboard seed data until backend is available:', error);
-            }
-        };
-
-        loadDashboardData();
-
-        return () => {
-            isMounted = false;
-        };
+        setToastType(type);
+        setTimeout(() => setToastMessage(''), 4000);
     }, []);
 
-    // --- DERIVED STATE ---
+    // ── Data Fetching ────────────────────────────────────────────────────────
+
+    const loadLiveData = useCallback(async () => {
+        try {
+            const [zoneOccupancy, vehicleLogs] = await Promise.all([
+                uniparkApi.getZoneOccupancy(),
+                uniparkApi.getVehicleLogs(),
+            ]);
+            setZones(zoneOccupancy.map(mapZone));
+            setLogs(vehicleLogs.map(mapLog));
+        } catch (err) {
+            console.warn('Live data refresh failed:', err.message);
+        }
+    }, []);
+
+    const loadAllData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [zoneOccupancy, vehicleLogs, spaceReservations, activeAlerts] = await Promise.all([
+                uniparkApi.getZoneOccupancy(),
+                uniparkApi.getVehicleLogs(),
+                uniparkApi.getReservations().catch(() => []),
+                uniparkApi.getAlerts().catch(() => []),
+            ]);
+
+            setZones(zoneOccupancy.map(mapZone));
+            setLogs(vehicleLogs.map(mapLog));
+            setReservations(spaceReservations);
+            setAnnouncements(activeAlerts.filter(a => a.is_active).map(mapAlert));
+        } catch (err) {
+            console.warn('Dashboard data load failed:', err.message);
+            triggerToast('Some data could not be loaded from the server.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, [triggerToast]);
+
+    // Initial load
+    useEffect(() => {
+        loadAllData();
+    }, [loadAllData]);
+
+    // 30-second polling for live zones + logs
+    useEffect(() => {
+        pollIntervalRef.current = setInterval(loadLiveData, 30000);
+        return () => clearInterval(pollIntervalRef.current);
+    }, [loadLiveData]);
+
+    // ── Derived State ─────────────────────────────────────────────────────────
+
     const metrics = useMemo(() => {
         const total = zones.reduce((sum, z) => sum + z.total, 0);
         const occupied = zones.reduce((sum, z) => sum + z.occupied, 0);
@@ -196,10 +195,8 @@ export default function AdminDashboard() {
     const overstayLogs = useMemo(() => {
         return logs.filter((log) => {
             if (log.status !== 'Entered') return false;
-
             const entryTimestamp = Date.parse(log.entryTimeValue || log.entry);
             if (Number.isNaN(entryTimestamp)) return false;
-
             const elapsedMinutes = Math.max(0, Math.floor((Date.now() - entryTimestamp) / 60000));
             return elapsedMinutes >= overstayThreshold;
         }).map((log) => {
@@ -207,58 +204,130 @@ export default function AdminDashboard() {
             const elapsedMinutes = Number.isNaN(entryTimestamp)
                 ? log.durationMinutes ?? overstayThreshold
                 : Math.max(0, Math.floor((Date.now() - entryTimestamp) / 60000));
-
-            return {
-                ...log,
-                duration: formatDuration(elapsedMinutes),
-            };
+            return { ...log, duration: formatDuration(elapsedMinutes) };
         });
     }, [logs, overstayThreshold]);
 
-    const handleCordonZoneToggle = (zoneId, spacesToCordon = 10) => {
-        setZones(zones.map(z => {
-            if (z.id === zoneId) {
-                const isCordoned = z.cordoned > 0;
-                return { ...z, cordoned: isCordoned ? 0 : Math.min(spacesToCordon, z.total - z.occupied - z.reserved) };
+    // ── Action Handlers ──────────────────────────────────────────────────────
+
+    const handleCordonZoneToggle = async (zoneId) => {
+        const zone = zones.find(z => z.id === zoneId);
+        if (!zone) return;
+        const isCordoned = zone.cordoned > 0;
+        try {
+            if (isCordoned) {
+                await uniparkApi.releaseZone(zoneId);
+                triggerToast(`${zone.name} — spaces released successfully.`);
+            } else {
+                await uniparkApi.cordonZone(zoneId);
+                triggerToast(`${zone.name} — zone cordoned off.`);
             }
-            return z;
-        }));
-        triggerToast('Zone parking restriction status updated.');
+            await loadLiveData();
+        } catch (err) {
+            triggerToast(`Failed: ${err.message}`, 'error');
+        }
     };
 
-    const handleAddReservation = (resData) => {
-        const reservation = {
-            id: `res-${Date.now()}`,
-            zone: resData.zone,
-            event: resData.event,
-            date: resData.date,
-            spaces: parseInt(resData.spaces),
-            status: 'Approved',
-        };
-        setReservations([reservation, ...reservations]);
-        setZones(zones.map(z => {
-            if (z.name === resData.zone) return { ...z, reserved: z.reserved + parseInt(resData.spaces) };
-            return z;
-        }));
-        triggerToast('Event parking reservation successful.');
+    const handleAddReservation = async (resData) => {
+        // Find zone ID from zone name
+        const zone = zones.find(z => z.name === resData.zone);
+        if (!zone) {
+            triggerToast('Zone not found.', 'error');
+            return;
+        }
+        try {
+            const result = await uniparkApi.bulkReserveZone(zone.id, {
+                eventName: resData.event,
+                numSpaces: parseInt(resData.spaces) || 5,
+                eventDate: resData.date,
+            });
+            setReservations(prev => [result, ...prev]);
+            await loadLiveData();
+            triggerToast('Event parking reservation successful.');
+        } catch (err) {
+            triggerToast(`Reservation failed: ${err.message}`, 'error');
+        }
     };
 
-    const handleUpdateGuard = (guardData) => {
-        // Add logic here to update the guard data
-        console.log(guardData);
-        triggerToast('Guard details updated successfully.');
+    const handleDeleteReservation = async (res) => {
+        // If we have space_ids, cancel each space
+        if (res.space_ids && res.space_ids.length > 0) {
+            try {
+                await Promise.all(res.space_ids.map(id => uniparkApi.cancelReservation(id)));
+                setReservations(prev => prev.filter(r => r.id !== res.id));
+                await loadLiveData();
+                triggerToast('Reservation cancelled and spots released.');
+            } catch (err) {
+                triggerToast(`Cancel failed: ${err.message}`, 'error');
+            }
+        } else if (res.id && !res.id.startsWith('res-')) {
+            // Single space ID from the reservations list
+            try {
+                await uniparkApi.cancelReservation(res.id);
+                setReservations(prev => prev.filter(r => r.id !== res.id));
+                await loadLiveData();
+                triggerToast('Reservation cancelled and spot released.');
+            } catch (err) {
+                triggerToast(`Cancel failed: ${err.message}`, 'error');
+            }
+        } else {
+            // Optimistic remove if no backend ID
+            setReservations(prev => prev.filter(r => r.id !== res.id));
+            triggerToast('Reservation removed.');
+        }
     };
 
-    const handleCreateAnnouncement = (annData) => {
-        const announcement = {
-            id: `ann-${Date.now()}`,
-            title: annData.title,
-            message: annData.message,
-            severity: annData.severity,
-            date: new Date().toISOString().split('T')[0],
-        };
-        setAnnouncements([announcement, ...announcements]);
-        triggerToast('Announcement published successfully.');
+    const handleCreateAnnouncement = async (annData) => {
+        // Announcements are broadcast as alerts — requires a zone. We'll use the first zone as default.
+        if (zones.length === 0) {
+            triggerToast('No zones available to attach announcement to.', 'error');
+            return;
+        }
+        const firstZoneId = zones[0].id;
+        try {
+            const result = await uniparkApi.createAlert({
+                parking_zone_id: firstZoneId,
+                alert_type: annData.title,
+                message: annData.message,
+                severity: annData.severity || 'low',
+            });
+            setAnnouncements(prev => [mapAlert(result), ...prev]);
+            triggerToast('Announcement published and drivers notified via email.');
+        } catch (err) {
+            triggerToast(`Failed to publish: ${err.message}`, 'error');
+        }
+    };
+
+    const handleDismissAnnouncement = async (ann) => {
+        try {
+            await uniparkApi.resolveAlert(ann.id, 'Dismissed by admin');
+            setAnnouncements(prev => prev.filter(a => a.id !== ann.id));
+            triggerToast('Announcement dismissed.');
+        } catch (err) {
+            // Optimistic remove even on error
+            setAnnouncements(prev => prev.filter(a => a.id !== ann.id));
+            triggerToast('Announcement removed.');
+        }
+    };
+
+    const handleDismissOverstay = async (plate) => {
+        try {
+            await uniparkApi.logVehicleExit({ vehicle_registration: plate });
+            setLogs(prev => prev.map(log =>
+                log.plate === plate
+                    ? { ...log, status: 'Exited', exit: new Date().toLocaleString() }
+                    : log
+            ));
+            triggerToast('Overstay dismissed — vehicle marked as exited.');
+        } catch (err) {
+            // Fallback: optimistic local update
+            setLogs(prev => prev.map(log =>
+                log.plate === plate
+                    ? { ...log, status: 'Exited', exit: new Date().toLocaleString() }
+                    : log
+            ));
+            triggerToast('Overstay alert dismissed.');
+        }
     };
 
     const handleSignOut = () => {
@@ -266,9 +335,11 @@ export default function AdminDashboard() {
         navigate('/login');
     };
 
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col antialiased">
-            {/* Top Bar / Header */}
+            {/* Top Bar */}
             <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3">
                     <div className="UniPark-Logo">
@@ -283,6 +354,12 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {/* Live refresh indicator */}
+                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Live • 30s refresh
+                    </div>
+
                     {/* User Profile Dropdown */}
                     <div className="relative">
                         <button
@@ -349,7 +426,7 @@ export default function AdminDashboard() {
 
             {/* Main Layout */}
             <div className="flex-1 flex flex-col md:flex-row">
-                {/* Sidebar Navigation */}
+                {/* Sidebar */}
                 <aside className="w-full md:w-64 border-r border-gray-200 bg-white px-4 py-6 flex flex-col gap-1.5 md:min-h-[calc(100vh-73px)]">
                     <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest px-3 mb-2">Controls</p>
 
@@ -374,7 +451,7 @@ export default function AdminDashboard() {
                         </button>
                     ))}
 
-                    {/* Sidebar bottom: Profile & Sign Out */}
+                    {/* Sidebar bottom */}
                     <div className="mt-auto pt-4 border-t border-gray-200 space-y-1">
                         <button
                             onClick={() => setActiveTab('profile')}
@@ -400,85 +477,109 @@ export default function AdminDashboard() {
                     </div>
                 </aside>
 
-                {/* Content Workspace */}
+                {/* Content */}
                 <main className="flex-1 bg-gray-50 px-6 py-8 md:px-10 overflow-y-auto">
-                    {/* Success toast */}
+                    {/* Toast notification */}
                     {toastMessage && (
-                        <div className="mb-6 p-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm flex items-center gap-3 shadow-lg shadow-emerald-900/15 animate-bounce">
-                            <span className="flex h-5 w-5 items-center justify-center bg-emerald-500 text-white rounded-full text-xs font-bold">✓</span>
+                        <div className={`mb-6 p-4 rounded-xl border text-sm flex items-center gap-3 shadow-lg animate-bounce ${toastType === 'error'
+                            ? 'border-rose-300 bg-rose-50 text-rose-700 shadow-rose-900/15'
+                            : 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-emerald-900/15'
+                            }`}>
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white text-xs font-bold ${toastType === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+                                {toastType === 'error' ? '!' : '✓'}
+                            </span>
                             <span>{toastMessage}</span>
                         </div>
                     )}
 
-                    {activeTab === 'overview' && (
-                        <OverviewTab
-                            zones={zones}
-                            metrics={metrics}
-                            handleCordonZoneToggle={handleCordonZoneToggle}
-                            onAddReservation={handleAddReservation}
-                            onCreateAnnouncement={handleCreateAnnouncement}
-                        />
+                    {/* Loading skeleton */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-24 gap-3 text-gray-400">
+                            <svg className="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            <span className="text-sm font-medium">Loading dashboard data…</span>
+                        </div>
                     )}
 
-                    {activeTab === 'reservations' && (
-                        <ReservationsTab
-                            reservations={reservations}
-                            setReservations={setReservations}
-                            zones={zones}
-                            setZones={setZones}
-                            triggerToast={triggerToast}
-                        />
-                    )}
-                    {activeTab === 'security-guards' && (
-                        <GuardManagementPage />
-                    )}
+                    {!loading && (
+                        <>
+                            {activeTab === 'overview' && (
+                                <OverviewTab
+                                    zones={zones}
+                                    metrics={metrics}
+                                    handleCordonZoneToggle={handleCordonZoneToggle}
+                                    onAddReservation={handleAddReservation}
+                                    onCreateAnnouncement={handleCreateAnnouncement}
+                                />
+                            )}
 
-                    {activeTab === 'logs' && (
-                        <LogsTab logs={logs} />
-                    )}
+                            {activeTab === 'reservations' && (
+                                <ReservationsTab
+                                    reservations={reservations}
+                                    setReservations={setReservations}
+                                    zones={zones}
+                                    onAddReservation={handleAddReservation}
+                                    onDeleteReservation={handleDeleteReservation}
+                                    triggerToast={triggerToast}
+                                />
+                            )}
 
-                    {activeTab === 'overstays' && (
-                        <OverstaysTab
-                            overstayLogs={overstayLogs}
-                            overstayThreshold={overstayThreshold}
-                            setOverstayThreshold={setOverstayThreshold}
-                            setLogs={setLogs}
-                            logs={logs}
-                            setActiveTab={setActiveTab}
-                            setLookupPlate={setLookupPlate}
-                            setSearchedDriver={setSearchedDriver}
-                            REGISTERED_DRIVERS={REGISTERED_DRIVERS}
-                            triggerToast={triggerToast}
-                        />
-                    )}
+                            {activeTab === 'security-guards' && (
+                                <GuardManagementPage />
+                            )}
 
-                    {activeTab === 'announcements' && (
-                        <AnnouncementsTab
-                            announcements={announcements}
-                            setAnnouncements={setAnnouncements}
-                            triggerToast={triggerToast}
-                        />
-                    )}
+                            {activeTab === 'logs' && (
+                                <LogsTab logs={logs} />
+                            )}
 
-                    {activeTab === 'lookup' && (
-                        <LookupTab
-                            initialPlate={lookupPlate}
-                            initialDriver={searchedDriver}
-                        />
-                    )}
+                            {activeTab === 'overstays' && (
+                                <OverstaysTab
+                                    overstayLogs={overstayLogs}
+                                    overstayThreshold={overstayThreshold}
+                                    setOverstayThreshold={setOverstayThreshold}
+                                    setLogs={setLogs}
+                                    logs={logs}
+                                    setActiveTab={setActiveTab}
+                                    setLookupPlate={setLookupPlate}
+                                    setSearchedDriver={setSearchedDriver}
+                                    onDismiss={handleDismissOverstay}
+                                    triggerToast={triggerToast}
+                                />
+                            )}
 
-                    {activeTab === 'analytics' && (
-                        <AnalyticsTab
-                            zones={zones}
-                            logs={logs}
-                            reservations={reservations}
-                            overstayLogs={overstayLogs}
-                            triggerToast={triggerToast}
-                        />
-                    )}
+                            {activeTab === 'announcements' && (
+                                <AnnouncementsTab
+                                    announcements={announcements}
+                                    setAnnouncements={setAnnouncements}
+                                    onCreateAnnouncement={handleCreateAnnouncement}
+                                    onDismissAnnouncement={handleDismissAnnouncement}
+                                    triggerToast={triggerToast}
+                                />
+                            )}
 
-                    {activeTab === 'profile' && (
-                        <ProfileTab triggerToast={triggerToast} />
+                            {activeTab === 'lookup' && (
+                                <LookupTab
+                                    initialPlate={lookupPlate}
+                                    initialDriver={searchedDriver}
+                                />
+                            )}
+
+                            {activeTab === 'analytics' && (
+                                <AnalyticsTab
+                                    zones={zones}
+                                    logs={logs}
+                                    reservations={reservations}
+                                    overstayLogs={overstayLogs}
+                                    triggerToast={triggerToast}
+                                />
+                            )}
+
+                            {activeTab === 'profile' && (
+                                <ProfileTab triggerToast={triggerToast} />
+                            )}
+                        </>
                     )}
                 </main>
             </div>

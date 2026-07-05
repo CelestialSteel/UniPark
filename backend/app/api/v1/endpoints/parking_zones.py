@@ -225,3 +225,59 @@ async def release_zone(
     logger.info(f"Zone released: {zone.zone_name}")
 
     return zone
+
+
+@router.post("/{zone_id}/reserve", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def bulk_reserve_zone_spaces(
+    zone_id: str,
+    event_name: str,
+    num_spaces: int = 5,
+    event_date: str = None,
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Bulk-reserve N available spaces in a zone for an event (admin only).
+
+    Returns a summary of the reservation with an aggregated ID list.
+    """
+    zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parking zone not found")
+
+    available_spaces = (
+        db.query(ParkingSpace)
+        .filter(ParkingSpace.zone_id == zone_id, ParkingSpace.status == "available")
+        .limit(num_spaces)
+        .all()
+    )
+
+    if len(available_spaces) < num_spaces:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only {len(available_spaces)} spaces available (requested {num_spaces})"
+        )
+
+    space_ids = []
+    for space in available_spaces:
+        space.status = "reserved"
+        space.cordoned_reason = event_name  # reuse cordoned_reason as event label
+        space_ids.append(str(space.id))
+
+    zone.reserved_spaces = (zone.reserved_spaces or 0) + num_spaces
+
+    db.commit()
+    db.refresh(zone)
+
+    logger.info(f"Bulk reserved {num_spaces} spaces in {zone.zone_name} for '{event_name}'")
+
+    from datetime import date as _date
+    return {
+        "id": f"res-{zone_id}-{event_name[:8]}",
+        "zone": zone.zone_name,
+        "zone_id": zone_id,
+        "event": event_name,
+        "date": event_date or str(_date.today()),
+        "spaces": num_spaces,
+        "space_ids": space_ids,
+        "status": "Approved",
+    }

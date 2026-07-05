@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_driver_user, get_security_user
+from app.core.dependencies import get_current_user, get_driver_user, get_security_user, get_admin_or_security_user
 from app.schemas import VehicleResponse, VehicleCreateRequest, LinkVehicleRequest, UnlinkVehicleRequest, AdminLinkVehicleRequest
 from app.models import Vehicle, Driver, User, UserRole, VehicleUnlinkEvent
 import logging
@@ -76,18 +76,23 @@ def _find_driver_by_admission(db: Session, admission_id: str) -> Optional[Driver
 
 @router.get("", response_model=list[dict])
 async def list_all_vehicles(
-    current_user: User = Depends(get_security_user),
+    current_user: User = Depends(get_admin_or_security_user),
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
+    plate: Optional[str] = None,
 ):
     """List every active vehicle in the system (security only).
 
-    Drives the "Authorized Directory" view on the security dashboard.
+    Supports an optional ``?plate=`` query param for plate-based lookup
+    (used by the admin driver-lookup tab).
     """
+    query = db.query(Vehicle).filter(Vehicle.is_active == True)
+    if plate:
+        normalized = _normalize_plate(plate)
+        query = query.filter(Vehicle.registration_number.ilike(f"%{normalized}%"))
     vehicles = (
-        db.query(Vehicle)
-        .filter(Vehicle.is_active == True)
+        query
         .order_by(Vehicle.created_at.desc())
         .offset(skip)
         .limit(limit)

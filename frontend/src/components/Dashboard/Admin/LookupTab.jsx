@@ -1,35 +1,47 @@
-import React, { useState } from 'react';
-
-const REGISTERED_DRIVERS = [
-    { plate: 'KDC 456X', name: 'Dalton Muindi', email: 'dalton.muindi@strathmore.edu', idNumber: '184066', phone: '+254 712 345678', department: 'Faculty of IT', role: 'Student' },
-    { plate: 'KBB 123A', name: 'Griffin Sitati', email: 'griffin.sitati@strathmore.edu', idNumber: '191613', phone: '+254 722 987654', department: 'School of Computing', role: 'Student' },
-    { plate: 'KCA 789B', name: 'Anthony Khajira', email: 'akhajira@strathmore.ac.ke', idNumber: 'SU-4009', phone: '+254 733 111222', department: 'Academic Staff', role: 'Faculty' },
-    { plate: 'KAA 999Z', name: 'David Ochieng', email: 'dochieng@strathmore.edu', idNumber: '175560', phone: '+254 701 999888', department: 'Business School', role: 'Student' },
-    { plate: 'KCC 888H', name: 'Mercy Njoroge', email: 'mnjoroge@strathmore.ac.ke', idNumber: 'SU-5034', phone: '+254 715 444333', department: 'Finance Office', role: 'Staff' },
-];
+import React, { useState, useEffect } from 'react';
+import { uniparkApi } from '../../../utils/uniparkApi';
 
 export default function LookupTab({ initialPlate = '', initialDriver = null }) {
     const [lookupPlate, setLookupPlate] = useState(initialPlate);
     const [searchedDriver, setSearchedDriver] = useState(initialDriver);
     const [lookupError, setLookupError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleDriverLookup = (e) => {
-        e.preventDefault();
-        setLookupError('');
-        setSearchedDriver(null);
+    // If parent pre-fills a plate (from overstay tab), auto-search
+    useEffect(() => {
+        if (initialPlate && !initialDriver) {
+            runSearch(initialPlate);
+        }
+    }, [initialPlate]);
 
-        const cleanPlate = lookupPlate.trim().toUpperCase();
+    const runSearch = async (plate) => {
+        const cleanPlate = (plate || '').trim().toUpperCase();
         if (!cleanPlate) {
             setLookupError('Please enter a vehicle registration plate number.');
             return;
         }
 
-        const driver = REGISTERED_DRIVERS.find(d => d.plate.replace(/\s+/g, '') === cleanPlate.replace(/\s+/g, ''));
-        if (driver) {
-            setSearchedDriver(driver);
-        } else {
-            setLookupError('No drivers found for registration number ' + cleanPlate);
+        setLoading(true);
+        setLookupError('');
+        setSearchedDriver(null);
+
+        try {
+            const results = await uniparkApi.lookupByPlate(cleanPlate);
+            if (!results || results.length === 0) {
+                setLookupError(`No drivers found for registration number ${cleanPlate}`);
+            } else {
+                setSearchedDriver(results[0]);
+            }
+        } catch (err) {
+            setLookupError(`Lookup failed: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const handleDriverLookup = (e) => {
+        e.preventDefault();
+        runSearch(lookupPlate);
     };
 
     return (
@@ -54,9 +66,18 @@ export default function LookupTab({ initialPlate = '', initialDriver = null }) {
                     />
                     <button
                         type="submit"
-                        className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg cursor-pointer"
+                        disabled={loading}
+                        className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg cursor-pointer transition"
                     >
-                        Lookup Owner
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Searching…
+                            </>
+                        ) : 'Lookup Owner'}
                     </button>
                 </div>
                 {lookupError && <p className="mt-3 text-xs text-rose-400 font-semibold">{lookupError}</p>}
@@ -68,37 +89,37 @@ export default function LookupTab({ initialPlate = '', initialDriver = null }) {
                     <div className="absolute right-0 top-0 h-40 w-40 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
                     <div className="flex flex-col sm:flex-row items-start gap-6">
-                        <div className="h-16 w-16 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-center text-2xl font-bold text-blue-400 shadow-md">
-                            {searchedDriver.name.split(' ').map(n => n[0]).join('')}
+                        <div className="h-16 w-16 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-center text-2xl font-bold text-blue-400 shadow-md shrink-0">
+                            {(searchedDriver.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
 
                         <div className="flex-1">
                             <div className="flex items-center gap-3 flex-wrap">
-                                <h2 className="text-xl font-bold text-gray-900">{searchedDriver.name}</h2>
+                                <h2 className="text-xl font-bold text-gray-900">{searchedDriver.name || 'Unknown Driver'}</h2>
                                 <span className="text-[10px] py-0.5 px-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200/40 font-bold uppercase">
-                                    {searchedDriver.role}
+                                    {searchedDriver.idLabel || searchedDriver.role || 'Driver'}
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm">
                                 <div>
                                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Institutional ID</span>
-                                    <span className="text-gray-700 font-medium">{searchedDriver.idNumber}</span>
+                                    <span className="text-gray-700 font-medium">{searchedDriver.idNumber || '—'}</span>
                                 </div>
                                 <div>
                                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Department / Faculty</span>
-                                    <span className="text-gray-700 font-medium">{searchedDriver.department}</span>
+                                    <span className="text-gray-700 font-medium">{searchedDriver.department || '—'}</span>
                                 </div>
                                 <div>
                                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Email Address</span>
                                     <a href={`mailto:${searchedDriver.email}`} className="text-blue-600 hover:text-blue-700 font-semibold hover:underline block">
-                                        {searchedDriver.email}
+                                        {searchedDriver.email || '—'}
                                     </a>
                                 </div>
                                 <div>
                                     <span className="text-xs text-gray-400 uppercase font-bold tracking-wider block">Phone Number</span>
                                     <a href={`tel:${searchedDriver.phone}`} className="text-gray-700 hover:text-gray-800 font-medium block">
-                                        {searchedDriver.phone}
+                                        {searchedDriver.phone || '—'}
                                     </a>
                                 </div>
                             </div>

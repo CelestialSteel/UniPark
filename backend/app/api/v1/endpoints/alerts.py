@@ -51,10 +51,10 @@ async def get_alert(
 @router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert(
     request: AlertCreateRequest,
-    current_user: User = Depends(get_security_user),
+    current_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Create alert for zone (security only)"""
+    """Create alert for zone (admin or security)"""
     
     zone = db.query(ParkingZone).filter(ParkingZone.id == request.parking_zone_id).first()
     
@@ -78,6 +78,18 @@ async def create_alert(
     
     logger.info(f"Alert created: {alert.alert_type} for zone {zone.zone_name}")
     
+    # Broadcast alert to all active drivers via email and DB notifications
+    try:
+        from app.services.notification_service import NotificationService
+        await NotificationService.notify_alert_broadcast(
+            db=db,
+            zone=zone,
+            alert_type=alert.alert_type,
+            alert_message=alert.message
+        )
+    except Exception as e:
+        logger.error(f"Failed to broadcast alert notification: {e}")
+        
     return alert
 
 

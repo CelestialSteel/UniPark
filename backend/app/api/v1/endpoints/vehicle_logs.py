@@ -275,6 +275,19 @@ async def log_vehicle_entry(
     db.refresh(log_entry, attribute_names=[
                "vehicle", "driver", "parking_zone"])
 
+    # Notify driver via email and DB notification
+    if vehicle and vehicle.driver and vehicle.driver.user:
+        try:
+            from app.services.notification_service import NotificationService
+            await NotificationService.notify_vehicle_entry(
+                db=db,
+                user=vehicle.driver.user,
+                registration_number=plate,
+                zone=zone
+            )
+        except Exception as e:
+            logger.error(f"Failed to send vehicle entry notification: {e}")
+
     logger.info(
         "Vehicle entry logged: %s into %s (occupied now %s/%s) by %s",
         plate or guest_plate,
@@ -389,6 +402,19 @@ async def log_vehicle_exit(
     db.refresh(entry_log)
     db.refresh(entry_log, attribute_names=[
                "vehicle", "driver", "parking_zone"])
+
+    # Notify driver via email and DB notification
+    if entry_log.vehicle and entry_log.vehicle.driver and entry_log.vehicle.driver.user:
+        try:
+            from app.services.notification_service import NotificationService
+            await NotificationService.notify_vehicle_exit(
+                db=db,
+                user=entry_log.vehicle.driver.user,
+                registration_number=plate,
+                duration_minutes=entry_log.duration_minutes or 0
+            )
+        except Exception as e:
+            logger.error(f"Failed to send vehicle exit notification: {e}")
 
     logger.info(
         "Vehicle exit logged: %s out of zone %s (occupied now %s/%s) by %s",

@@ -90,6 +90,18 @@ async def get_security_user(
     return current_user
 
 
+async def get_admin_or_security_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Require admin or security officer role"""
+    if current_user.role not in (UserRole.ADMIN, UserRole.SECURITY):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or security officer privileges required"
+        )
+    return current_user
+
+
 async def get_driver_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
@@ -98,17 +110,5 @@ async def get_driver_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Driver privileges required"
-        )
-    return current_user
-
-
-async def get_admin_or_security_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
-    """Require admin or security role"""
-    if current_user.role not in [UserRole.ADMIN, UserRole.SECURITY]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin or security officer privileges required"
         )
     return current_user

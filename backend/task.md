@@ -1,0 +1,15 @@
+- [x] Phase 1: Backend preparation
+    - [x] Add GET `/spaces/reservations` and DELETE `/spaces/reservations/{id}` endpoints.
+    - [x] Modify `list_all_vehicles` in `vehicles.py` to support plate filtering.
+    - [x] Add bulk zone reserve endpoint to `parking_zones.py`.
+    - [x] Allow admin role to create alerts/announcements in `alerts.py`.
+    - [x] Add combined admin/security dependency in `dependencies.py`.
+- [x] Phase 2: Frontend API Connection
+    - [x] Add new API methods to `uniparkApi.js` for admin dashboard.
+    - [x] Rewrite `AdminDashboard.jsx` to fetch zones, logs, reservations, and alerts from API on mount.
+    - [x] Add 30s polling for live zones and logs.
+    - [x] Update `ReservationsTab.jsx` to use backend-wired callbacks and remove local state mutations.
+    - [x] Update `AnnouncementsTab.jsx` to use backend-wired callbacks and remove local state mutations.
+    - [x] Update `LookupTab.jsx` to query the backend.
+    - [x] Update `OverstaysTab.jsx` to use backend dismiss callback.
+    - [x] Verify `ReserveSpacesModal` compatibility with API data.

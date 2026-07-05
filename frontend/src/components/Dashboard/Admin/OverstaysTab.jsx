@@ -11,7 +11,7 @@ export default function OverstaysTab({
     setActiveTab,
     setLookupPlate,
     setSearchedDriver,
-    REGISTERED_DRIVERS,
+    onDismiss,
     triggerToast,
 }) {
     const handleDownloadOverstayPDF = () => {
@@ -19,17 +19,20 @@ export default function OverstaysTab({
         triggerToast('Overstay PDF generated successfully');
     };
 
-    const handleDismiss = (plateToRemove) => {
-        setLogs(logs.map(log =>
-            log.plate === plateToRemove ? { ...log, status: 'Exited', exit: new Date().toLocaleString() } : log
-        ));
-        triggerToast('Overstay alert dismissed — vehicle marked as exited.');
+    const handleDismiss = async (plateToRemove) => {
+        if (onDismiss) {
+            await onDismiss(plateToRemove);
+        } else {
+            setLogs(logs.map(log =>
+                log.plate === plateToRemove ? { ...log, status: 'Exited', exit: new Date().toLocaleString() } : log
+            ));
+            triggerToast('Overstay alert dismissed.');
+        }
     };
 
     const handleLookup = (plate) => {
-        const driver = REGISTERED_DRIVERS.find(d => d.plate === plate);
         setLookupPlate(plate);
-        setSearchedDriver(driver || null);
+        setSearchedDriver(null); // LookupTab will fetch from API
         setActiveTab('lookup');
     };
 

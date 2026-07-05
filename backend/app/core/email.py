@@ -136,3 +136,93 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     except Exception as e:
         logger.error(f"Failed to send password reset email to {to_email}: {e}")
         raise
+
+
+def send_notification_email(to_email: str, subject: str, title: str, message: str) -> None:
+    """Send a transactional notification email.
+
+    Falls back to console logging when SMTP credentials are not configured.
+    """
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        logger.warning(
+            f"SMTP credentials not configured. Notification Email to {to_email}:\n"
+            f"Subject: {subject}\n"
+            f"Title: {title}\n"
+            f"Message: {message}\n"
+        )
+        return
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="480" cellpadding="0" cellspacing="0"
+               style="background:#ffffff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:24px 30px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">
+                UniPark
+              </h1>
+              <p style="margin:4px 0 0;color:#bfdbfe;font-size:12px;">
+                Strathmore University Parking Management
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 32px 24px;">
+              <h2 style="margin:0 0 12px;font-size:18px;color:#111827;font-weight:600;">
+                {title}
+              </h2>
+              <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.6;white-space:pre-line;">
+                {message}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9fafb;padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;font-size:11px;color:#9ca3af;">
+                &copy; {__import__('datetime').date.today().year} Strathmore University UniPark.
+                All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"UniPark <{settings.SMTP_USER}>"
+    msg["To"] = to_email
+    msg.attach(MIMEText(message, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+        logger.info(f"Notification email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send notification email to {to_email}: {e}")
+        raise
+

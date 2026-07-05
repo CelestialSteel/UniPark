@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ReserveSpacesModal({ isOpen, onClose, zones, newRes, setNewRes, onSubmit }) {
+export default function ReserveSpacesModal({ isOpen, onClose, zones, newRes, setNewRes, onSubmit, submitting }) {
     if (!isOpen) return null;
 
     return (
@@ -63,15 +63,17 @@ export default function ReserveSpacesModal({ isOpen, onClose, zones, newRes, set
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 cursor-pointer"
+                            disabled={submitting}
+                            className="flex-1 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 disabled:opacity-50 cursor-pointer"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 cursor-pointer"
+                            disabled={submitting}
+                            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:bg-blue-300 shadow-lg shadow-blue-500/20 cursor-pointer transition"
                         >
-                            Confirm Reservation
+                            {submitting ? 'Reserving…' : 'Confirm Reservation'}
                         </button>
                     </div>
                 </form>
