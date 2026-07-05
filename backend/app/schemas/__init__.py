@@ -21,6 +21,30 @@ class UserRegisterRequest(BaseModel):
     student_or_lecturer_id: Optional[str] = None
     is_lecturer: bool = False
 
+    @field_validator("email")
+    @classmethod
+    def _validate_organisational_email(cls, value: str) -> str:
+        """Restrict sign-ups to the official organisational domain.
+
+        Strathmore staff and students must register with a ``strathmore.edu``
+        address. Anything else is rejected with a clear, user-facing message.
+        """
+        if not value:
+            return value
+        if not value.lower().endswith("@strathmore.edu"):
+            raise ValueError(
+                "Please use your organizational email address (must end with @strathmore.edu)."
+            )
+        return value
+
+    @field_validator("student_or_lecturer_id")
+    @classmethod
+    def _trim_identifier(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        trimmed = value.strip()
+        return trimmed or None
+
 
 class UserLoginRequest(BaseModel):
     """User login request"""

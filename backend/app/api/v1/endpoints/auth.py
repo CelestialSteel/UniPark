@@ -27,7 +27,7 @@ async def register(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="This email address is already registered. Please sign in instead."
         )
 
     # Validate role
@@ -38,6 +38,28 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid role. Must be: admin, security, or driver"
         )
+
+    # For drivers, check that the chosen ID is not already taken on the
+    # `drivers` table (student_id for students, faculty_id for lecturers).
+    # The DB enforces uniqueness with `unique=True`, but pre-checking lets
+    # us return a clean, field-specific error message instead of relying on
+    # the generic IntegrityError.
+    identifier = (request.student_or_lecturer_id or "").strip() or None
+    if role == UserRole.DRIVER and identifier:
+        if request.is_lecturer:
+            id_taken = db.query(Driver).filter(
+                Driver.faculty_id == identifier).first()
+            id_field_label = "Lecturer ID"
+        else:
+            id_taken = db.query(Driver).filter(
+                Driver.student_id == identifier).first()
+            id_field_label = "Student ID"
+
+        if id_taken:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"This {id_field_label} is already registered to another account."
+            )
 
     # Create user
     user = User(
@@ -54,7 +76,6 @@ async def register(
 
     # If driver role, create driver profile
     if role == UserRole.DRIVER:
-        identifier = (request.student_or_lecturer_id or "").strip() or None
         driver = Driver(
             user_id=user.id,
             license_number=f"PENDING-{user.id}",
