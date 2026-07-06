@@ -37,47 +37,6 @@ function formatUser(apiUser) {
     };
 }
 
-function getDemoUser(email, password, selectedRole) {
-    const demoUsers = {
-        driver: {
-            email: '12345',
-            password: '12345678',
-            name: 'Dalton Muindi',
-            phone: '+254 712 345678',
-            department: 'Faculty of IT',
-        },
-        guard: {
-            email: 'guard@unipark.ac.ke',
-            password: 'guard123',
-            name: 'Security Guard',
-            phone: '+254 722 987654',
-            department: 'Security Command Centre',
-        },
-        admin: {
-            email: 'admin@unipark.ac.ke',
-            password: 'admin123',
-            name: 'Admin Administrator',
-            phone: '+254 722 987654',
-            department: 'Security Command Centre',
-        },
-    };
-
-    const demo = demoUsers[selectedRole];
-    if (!demo || demo.email !== email || demo.password !== password) {
-        return null;
-    }
-
-    return {
-        id: `demo-${selectedRole}`,
-        email,
-        role: selectedRole,
-        name: demo.name,
-        phone: demo.phone,
-        department: demo.department,
-        image: '',
-    };
-}
-
 async function parseApiError(response) {
     try {
         const data = await response.json();
@@ -142,14 +101,12 @@ export function AuthProvider({ children }) {
             setRole(userData.role);
             return userData;
         } catch (err) {
-            const demoUser = getDemoUser(email, password, selectedRole);
-            if (demoUser) {
-                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(demoUser));
-                setUser(demoUser);
-                setRole(demoUser.role);
-                return demoUser;
-            }
-
+            // The previous implementation had a silent `getDemoUser()`
+            // fallback here that signed the user in client-side even when
+            // the real backend rejected the credentials. That left the UI
+            // in a half-authed state (no JWT cookies set) and made every
+            // subsequent API call fail with 401. We now surface the real
+            // error to the form so the user can correct their password.
             const message = err.message || 'Login failed';
             setError(message);
             throw new Error(message);

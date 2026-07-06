@@ -159,9 +159,10 @@ export const uniparkApi = {
     resolveAlert: (alertId, notes = 'Dismissed by admin') =>
         requestJson(`/api/v1/alerts/${alertId}/resolve?resolution_notes=${encodeURIComponent(notes)}`, { method: 'PATCH' }),
 
-    // Admin: driver lookup by plate
+    // Admin: driver lookup by plate (returns full driver profile + vehicles
+    // + current parking status + recent history in a single round-trip).
     lookupByPlate: (plate) => {
         const params = new URLSearchParams({ plate });
-        return requestJson(`/api/v1/vehicles?${params.toString()}`);
+        return requestJson(`/api/v1/drivers/lookup?${params.toString()}`);
     },
-};
+};

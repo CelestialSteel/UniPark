@@ -133,6 +133,78 @@ class DriverLogResponse(BaseModel):
         from_attributes = True
 
 
+# ==================== DRIVER LOOKUP SCHEMAS ====================
+
+class DriverVehicleListItem(BaseModel):
+    """One vehicle owned by a driver (used by the admin Driver Lookup tab)."""
+    id: UUID
+    registration_number: str
+    make: Optional[str] = None
+    model: Optional[str] = None
+    color: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    is_primary: bool
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DriverLookupVehicleStatus(BaseModel):
+    """Whether one of the driver's vehicles is currently inside campus."""
+    registration_number: str
+    is_parked: bool
+    parking_zone_name: Optional[str] = None
+    parking_zone_code: Optional[str] = None
+    parking_space_id: Optional[UUID] = None
+    entry_time: Optional[datetime] = None
+    elapsed_minutes: Optional[int] = None
+
+
+class DriverLookupResponse(BaseModel):
+    """Aggregated driver profile returned by the admin Lookup tab.
+
+    Combines driver identity, full vehicle list, current parking status for
+    each vehicle, and a recent parking history slice — everything the
+    admin needs to confirm identity and activity at a glance.
+    """
+    driver_id: UUID
+    user_id: UUID
+    name: str
+    email: str
+    phone: Optional[str] = None
+    role: str
+    is_active: bool
+    id_label: str
+    id_number: Optional[str] = None
+    department: Optional[str] = None
+    license_number: Optional[str] = None
+    license_expiry: Optional[datetime] = None
+    vehicles: List[DriverVehicleListItem]
+    current_parking: List[DriverLookupVehicleStatus]
+    recent_history: List["DriverLookupHistoryItem"]
+
+
+class DriverLookupHistoryItem(BaseModel):
+    """One recent entry/exit event for the driver's parking history."""
+    id: UUID
+    vehicle_registration: Optional[str] = None
+    parking_zone_name: Optional[str] = None
+    parking_zone_code: Optional[str] = None
+    status: str
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Resolve the forward reference now that DriverLookupHistoryItem is defined.
+DriverLookupResponse.model_rebuild()
+
+
 # ==================== VEHICLE SCHEMAS ====================
 
 class VehicleCreateRequest(BaseModel):

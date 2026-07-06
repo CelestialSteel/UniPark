@@ -1,22 +1,34 @@
 """Drivers Endpoints"""
 from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_driver_user, get_admin_user, get_security_user
 from app.core.security import hash_password, verify_password
-from app.models import Driver, User, UserRole, Vehicle, VehicleLog
+from app.models import Driver, User, UserRole, Vehicle, VehicleLog, VehicleEntryStatus
 from app.schemas import (
     DriverProfileUpdateRequest,
     PasswordUpdateRequest,
     DriverVehicleResponse,
     DriverLogResponse,
+    DriverLookupResponse,
+    DriverVehicleListItem,
+    DriverLookupVehicleStatus,
+    DriverLookupHistoryItem,
 )
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _role_value(user: User) -> str:
+    """Return the canonical lowercase role string for ``user.role``."""
+    if user.role is None:
+        return "driver"
+    return user.role.value if hasattr(user.role, "value") else str(user.role)
 
 
 def serialize_driver_profile(driver: Driver, current_user: User) -> dict:
@@ -221,6 +233,187 @@ async def lookup_driver_by_admission(
         "id_label": id_label,
         "is_active": user.is_active,
     }
+
+
+@router.get("/lookup", response_model=DriverLookupResponse)
+async def lookup_driver_by_plate(
+    plate: str = Query(..., min_length=1, max_length=50,
+                       description="Vehicle registration plate (case-insensitive)."),
+    history_limit: int = Query(10, ge=1, le=50,
+                               description="Number of recent logs to include."),
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Look up a driver + their full parking context by registration plate.
+
+    This is the endpoint the Admin Dashboard's "Driver Lookup" tab calls.
+    It returns everything in one round-trip so the admin does not have to
+    chain a vehicle lookup, a driver lookup, a vehicle list call, and a
+    history call manually:
+
+    * Driver identity, contact info, and admission/staff/faculty ID
+    * Every vehicle the driver owns (active and inactive)
+    * Current parking status for each vehicle (zone + elapsed time)
+    * A slice of recent entry/exit history
+
+    Lookup is exact-match (after upper-casing) so the admin can never
+    mis-attribute a plate that happens to share characters with another
+    vehicle.
+    """
+    needle = (plate or "").strip().upper()
+    if not needle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A registration plate is required.",
+        )
+
+    # 1. Find the matching vehicle. Plates are unique in the schema, so
+    #    this is at most one row.
+    vehicle = (
+        db.query(Vehicle)
+        .filter(Vehicle.registration_number == needle)
+        .first()
+    )
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No vehicle is registered with plate {needle}.",
+        )
+
+    driver = vehicle.driver
+    if not driver or not driver.user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Vehicle {needle} is not linked to any driver. "
+                "It may be a visitor plate or an orphaned record."
+            ),
+        )
+
+    user = driver.user
+    full_name = (
+        f"{user.first_name or ''} {user.last_name or ''}"
+    ).strip() or user.email
+
+    # 2. Pick the friendly ID label (Student / Lecturer / Staff) and value.
+    if driver.student_id:
+        id_label, id_value = "Student", driver.student_id
+    elif driver.faculty_id:
+        id_label, id_value = "Lecturer", driver.faculty_id
+    elif driver.staff_id:
+        id_label, id_value = "Staff", driver.staff_id
+    else:
+        id_label, id_value = "Driver", None
+
+    # 3. Every vehicle the driver owns (active and inactive), ordered so
+    #    the primary plate shows first.
+    vehicles = (
+        db.query(Vehicle)
+        .filter(Vehicle.driver_id == driver.id)
+        .order_by(Vehicle.is_primary.desc(), Vehicle.created_at.desc())
+        .all()
+    )
+    vehicle_items = [
+        DriverVehicleListItem(
+            id=v.id,
+            registration_number=v.registration_number,
+            make=v.make,
+            model=v.model,
+            color=v.color,
+            vehicle_type=v.vehicle_type,
+            is_primary=v.is_primary,
+            is_active=v.is_active,
+            created_at=v.created_at,
+        )
+        for v in vehicles
+    ]
+
+    # 4. Current parking status per vehicle (one row per vehicle that has
+    #    an open log). Computed in a single query so the response is fast
+    #    even for drivers with many cars.
+    plate_set = {v.registration_number for v in vehicles}
+    active_logs = (
+        db.query(VehicleLog)
+        .filter(
+            VehicleLog.status == VehicleEntryStatus.ENTERED,
+            VehicleLog.exit_time.is_(None),
+            VehicleLog.vehicle_id.in_([v.id for v in vehicles]),
+        )
+        .all()
+    )
+
+    now = datetime.utcnow()
+    current_parking: list[DriverLookupVehicleStatus] = []
+    for log in active_logs:
+        plate_str = log.vehicle.registration_number if log.vehicle else None
+        elapsed = (
+            int((now - log.entry_time).total_seconds() // 60)
+            if log.entry_time else None
+        )
+        current_parking.append(
+            DriverLookupVehicleStatus(
+                registration_number=plate_str,
+                is_parked=True,
+                parking_zone_name=log.parking_zone.zone_name if log.parking_zone else None,
+                parking_zone_code=log.parking_zone.zone_code if log.parking_zone else None,
+                parking_space_id=log.parking_space_id,
+                entry_time=log.entry_time,
+                elapsed_minutes=elapsed,
+            )
+        )
+
+    # Make sure every vehicle appears in the status list, even when it is
+    # not currently parked (so the UI can show a consistent table).
+    seen = {c.registration_number for c in current_parking}
+    for v in vehicles:
+        if v.registration_number not in seen:
+            current_parking.append(
+                DriverLookupVehicleStatus(
+                    registration_number=v.registration_number,
+                    is_parked=False,
+                )
+            )
+
+    # 5. Recent history across all of the driver's vehicles.
+    history_rows = (
+        db.query(VehicleLog)
+        .filter(VehicleLog.vehicle_id.in_([v.id for v in vehicles]))
+        .order_by(VehicleLog.entry_time.desc())
+        .limit(history_limit)
+        .all()
+    )
+    history_items = [
+        DriverLookupHistoryItem(
+            id=log.id,
+            vehicle_registration=log.vehicle.registration_number if log.vehicle else None,
+            parking_zone_name=log.parking_zone.zone_name if log.parking_zone else None,
+            parking_zone_code=log.parking_zone.zone_code if log.parking_zone else None,
+            status=log.status.value if hasattr(
+                log.status, "value") else str(log.status),
+            entry_time=log.entry_time,
+            exit_time=log.exit_time,
+            duration_minutes=log.duration_minutes,
+        )
+        for log in history_rows
+    ]
+
+    return DriverLookupResponse(
+        driver_id=driver.id,
+        user_id=user.id,
+        name=full_name,
+        email=user.email,
+        phone=user.phone_number,
+        role=_role_value(user),
+        is_active=user.is_active,
+        id_label=id_label,
+        id_number=id_value,
+        department=driver.department,
+        license_number=driver.license_number,
+        license_expiry=driver.license_expiry,
+        vehicles=vehicle_items,
+        current_parking=current_parking,
+        recent_history=history_items,
+    )
 
 
 @router.get("/vehicles", response_model=list[DriverVehicleResponse])
