@@ -255,7 +255,7 @@ export default function DriverLogsTab() {
                 </div>
 
                 {/* Export Button */}
-                <button 
+                {/* <button 
                     onClick={() => alert('Logs downloaded successfully as PDF!')}
                     className="flex items-center justify-center p-2 bg-blue-700 border border-blue-700 rounded-xl text-white hover:bg-blue-800 transition cursor-pointer shadow-xs"
                     aria-label="Export Logs"
@@ -263,7 +263,7 @@ export default function DriverLogsTab() {
                     <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                </button>
+                </button> */}
             </div>
 
             {/* Logs Table Card */}
