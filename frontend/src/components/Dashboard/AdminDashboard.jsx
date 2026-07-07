@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ASSETS } from '../../constants/assets';
@@ -282,25 +282,17 @@ export default function AdminDashboard() {
             triggerToast('No zones available — please ensure parking zones are set up.', 'error');
             return;
         }
-        // annData.zoneId === 'all' means institution-wide; otherwise target a specific zone
-        const targetZoneId = (annData.zoneId && annData.zoneId !== 'all')
-            ? annData.zoneId
-            : zones[0].id; // DB requires a zone_id; silently use first for institution-wide
-        const isAllZones = !annData.zoneId || annData.zoneId === 'all';
-        const targetZone = zones.find(z => z.id === targetZoneId);
+        const targetZoneId = zones[0].id;
         try {
             const result = await uniparkApi.createAlert({
                 parking_zone_id: targetZoneId,
                 alert_type: annData.title,
                 message: annData.message,
                 severity: annData.severity || 'low',
-                // Pass zone context for the backend notification formatter
-                zone_context: isAllZones ? null : targetZone?.name,
+                zone_context: 'All Zones',
             });
             setAnnouncements(prev => [mapAlert(result), ...prev]);
-            triggerToast(isAllZones
-                ? 'Institution-wide announcement published.'
-                : `Announcement published for ${targetZone?.name}.`);
+            triggerToast('Institution-wide announcement published.');
         } catch (err) {
             triggerToast(`Failed to publish: ${err.message}`, 'error');
         }

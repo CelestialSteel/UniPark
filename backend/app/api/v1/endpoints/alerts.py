@@ -85,7 +85,8 @@ async def create_alert(
             db=db,
             zone=zone,
             alert_type=alert.alert_type,
-            alert_message=alert.message
+            alert_message=alert.message,
+            zone_context=request.zone_context
         )
     except Exception as e:
         logger.error(f"Failed to broadcast alert notification: {e}")

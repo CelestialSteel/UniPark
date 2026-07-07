@@ -397,6 +397,7 @@ class AlertCreateRequest(BaseModel):
     alert_type: str = Field(..., min_length=1)
     message: str = Field(..., min_length=1)
     severity: str = "medium"  # low, medium, high
+    zone_context: Optional[str] = None
 
 
 class AlertResponse(BaseModel):

@@ -1,5 +1,6 @@
 """Notification Service to handle DB insertion and email dispatch"""
 import logging
+from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi.concurrency import run_in_threadpool
 from app.models import Notification, NotificationType, User, UserRole, ParkingSpace, ParkingZone
@@ -9,9 +10,13 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 
+def _local_timestamp() -> str:
+    return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
+
+
 class NotificationService:
     @staticmethod
-    async def create_db_notification(
+    def create_db_notification(
         db: Session,
         recipient_user_id: UUID,
         notification_type: NotificationType,
@@ -97,12 +102,22 @@ class NotificationService:
         db: Session,
         zone: ParkingZone,
         alert_type: str,
-        alert_message: str
+        alert_message: str,
+        zone_context: str | None = None
     ) -> None:
         """Broadcast alert to all active drivers on campus."""
         drivers = db.query(User).filter(User.role == UserRole.DRIVER, User.is_active == True).all()
-        title = alert_type  # The admin's headline title IS the notification title
-        message = alert_message  # Send the body directly, without any zone wrapping
+        zone_label = (zone_context or zone.zone_name or zone.zone_code or "Campus").strip()
+        title = f"Parking Alert: {zone_label}"
+        message = (
+            f"Dear Driver,\n\n"
+            f"A live parking alert has been reported for the following zone:\n\n"
+            f"  • Zone: {zone_label}"
+            f"{f' (Code: {zone.zone_code})' if zone.zone_code else ''}\n"
+            f"  • Alert Type: {alert_type}\n"
+            f"  • Details: {alert_message}\n\n"
+            f"Please check alternative parking options if needed."
+        )
 
         for driver in drivers:
             await NotificationService.notify_user(
@@ -126,7 +141,7 @@ class NotificationService:
             f"Hello {user.first_name or 'Driver'},\n\n"
             f"Your registered vehicle (Plate: {registration_number}) has entered the campus.\n\n"
             f"  • Zone: {zone.zone_name}\n"
-            f"  • Time: {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
+            f"  • Time: {_local_timestamp()}\n\n"
             f"Drive safely!"
         )
 
@@ -151,7 +166,7 @@ class NotificationService:
             f"Hello {user.first_name or 'Driver'},\n\n"
             f"Your vehicle (Plate: {registration_number}) has exited the campus.\n\n"
             f"  • Duration: {duration_minutes} minutes\n"
-            f"  • Time: {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
+            f"  • Time: {_local_timestamp()}\n\n"
             f"Thank you for using UniPark!"
         )
 

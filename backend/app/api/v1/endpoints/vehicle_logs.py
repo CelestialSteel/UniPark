@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_security_user
 from app.schemas import VehicleEntryRequest, VehicleExitRequest, VehicleLogResponse
 from app.models import Vehicle, VehicleLog, ParkingSpace, ParkingZone, User, UserRole, ParkingSpaceStatus
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,14 @@ router = APIRouter()
 
 def _normalize(value: str) -> str:
     return (value or "").strip().upper()
+
+
+def _as_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def serialize_log(log: VehicleLog) -> dict:
@@ -39,8 +47,8 @@ def serialize_log(log: VehicleLog) -> dict:
         "parking_space_id": str(log.parking_space_id) if log.parking_space_id else None,
         "parking_zone_id": str(log.parking_zone_id),
         "status": log.status,
-        "entry_time": log.entry_time,
-        "exit_time": log.exit_time,
+        "entry_time": _as_utc(log.entry_time),
+        "exit_time": _as_utc(log.exit_time),
         "duration_minutes": log.duration_minutes,
         "vehicle_registration": plate,
         "driver_name": driver_name,
@@ -49,7 +57,7 @@ def serialize_log(log: VehicleLog) -> dict:
         "guest_registration": log.guest_registration,
         "guest_name": log.guest_name,
         "guest_group": log.guest_group,
-        "created_at": log.created_at,
+        "created_at": _as_utc(log.created_at),
     }
 
 

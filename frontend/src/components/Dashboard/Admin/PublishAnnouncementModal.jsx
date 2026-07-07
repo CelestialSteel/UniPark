@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit, submitting, zones = [] }) {
+export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit, submitting }) {
     if (!isOpen) return null;
 
     return (
