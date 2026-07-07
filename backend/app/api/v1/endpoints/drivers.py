@@ -174,11 +174,6 @@ async def lookup_driver_by_admission(
     current_user: User = Depends(get_security_user),
     db: Session = Depends(get_db)
 ):
-    """Look up a driver by admission / staff / faculty ID (security only).
-
-    Used by the gate "Register Vehicle" form to confirm that the driver is
-    already in the system before linking a freshly-seen plate to them.
-    """
     needle = (admission_id or "").strip()
     if not needle:
         raise HTTPException(
@@ -231,6 +226,78 @@ async def lookup_driver_by_admission(
         "department": driver.department,
         "admission_id": needle,
         "id_label": id_label,
+        "is_active": user.is_active,
+    }
+
+
+@router.get("/contact-lookup", response_model=dict)
+async def contact_lookup_by_plate(
+    plate: str = Query(..., min_length=1, max_length=50,
+                       description="Vehicle registration plate (case-insensitive)."),
+    current_user: User = Depends(get_security_user),
+    db: Session = Depends(get_db),
+):
+    """Look up the contact card for the driver of ``plate`` (security only).
+
+    Used by the Security Dashboard's "Contact Driver" tab to populate the
+    recipient panel after a guard types a plate. Returns just the fields
+    the guard needs to confirm identity + contact the driver: name, email,
+    phone, role, department, and the admission/staff/faculty ID label.
+
+    Kept distinct from the admin ``/lookup`` endpoint (which returns the
+    full parking history) so the security surface stays minimal.
+    """
+    needle = (plate or "").strip().upper()
+    if not needle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A registration plate is required.",
+        )
+
+    vehicle = (
+        db.query(Vehicle)
+        .filter(Vehicle.registration_number == needle)
+        .first()
+    )
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No vehicle is registered with plate {needle}.",
+        )
+
+    driver = vehicle.driver
+    if not driver or not driver.user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Vehicle {needle} is not linked to any driver. "
+                "It may be a visitor plate."
+            ),
+        )
+
+    user = driver.user
+    full_name = (
+        f"{user.first_name or ''} {user.last_name or ''}"
+    ).strip() or user.email
+
+    if driver.student_id:
+        id_label, id_value = "Student", driver.student_id
+    elif driver.faculty_id:
+        id_label, id_value = "Lecturer", driver.faculty_id
+    elif driver.staff_id:
+        id_label, id_value = "Staff", driver.staff_id
+    else:
+        id_label, id_value = "Driver", None
+
+    return {
+        "plate": vehicle.registration_number,
+        "name": full_name,
+        "email": user.email,
+        "phone": user.phone_number,
+        "role": _role_value(user),
+        "department": driver.department,
+        "id_label": id_label,
+        "id_number": id_value,
         "is_active": user.is_active,
     }
 
@@ -607,4 +674,3 @@ async def activate_driver(
     logger.info(f"Driver activated: {driver.user.email}")
 
     return {"message": "Driver activated successfully"}
-

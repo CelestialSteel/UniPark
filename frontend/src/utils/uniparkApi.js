@@ -165,4 +165,18 @@ export const uniparkApi = {
         const params = new URLSearchParams({ plate });
         return requestJson(`/api/v1/drivers/lookup?${params.toString()}`);
     },
+
+    // Security: quick driver contact card (name/email/phone/department)
+    // for the "Contact Driver" tab — no history, no vehicle list.
+    contactLookupByPlate: (plate) => {
+        const params = new URLSearchParams({ plate });
+        return requestJson(`/api/v1/drivers/contact-lookup?${params.toString()}`);
+    },
+
+    // Security: dispatch a quick alert to the driver of a plate.
+    contactDriver: (payload) =>
+        requestJson('/api/v1/notifications/contact-driver', {
+            method: 'POST',
+            body: payload,
+        }),
 };

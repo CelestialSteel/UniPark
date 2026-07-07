@@ -13,17 +13,6 @@ import ZoneOccupancyTab from './Security/ZoneOccupancyTab';
 import ProfileTab from './Security/ProfileTab';
 import ContactDriverTab from './Security/ContactDriverTab';
 
-// Kept for ContactDriverTab only, which still does a client-side plate
-// search against a static directory. A future iteration should refactor
-// it to use the live API as well.
-const REGISTERED_DRIVERS = [
-    { plate: 'KDC 456X', name: 'Dalton Muindi', email: 'dalton.muindi@strathmore.edu', idNumber: '184066', phone: '+254 712 345678', department: 'Faculty of IT', role: 'Student' },
-    { plate: 'KBB 123A', name: 'Griffin Sitati', email: 'griffin.sitati@strathmore.edu', idNumber: '191613', phone: '+254 722 987654', department: 'School of Computing', role: 'Student' },
-    { plate: 'KCA 789B', name: 'Anthony Khajira', email: 'akhajira@strathmore.ac.ke', idNumber: 'SU-4009', phone: '+254 733 111222', department: 'Academic Staff', role: 'Faculty' },
-    { plate: 'KAA 999Z', name: 'David Ochieng', email: 'dochieng@strathmore.edu', idNumber: '175560', phone: '+254 701 999888', department: 'Business School', role: 'Student' },
-    { plate: 'KCC 888H', name: 'Mercy Njoroge', email: 'mnjoroge@strathmore.ac.ke', idNumber: 'SU-5034', phone: '+254 715 444333', department: 'Finance Office', role: 'Staff' },
-];
-
 const NAV_ITEMS = [
     {
         id: 'home',
@@ -355,7 +344,6 @@ export default function SecurityDashboard() {
                     )}
                     {activeTab === 'contact' && (
                         <ContactDriverTab
-                            registeredDrivers={REGISTERED_DRIVERS}
                             triggerToast={triggerToast}
                         />
                     )}

@@ -432,6 +432,32 @@ class NotificationResponse(BaseModel):
         from_attributes = True
 
 
+# ==================== CONTACT DRIVER SCHEMAS ====================
+
+class ContactDriverRequest(BaseModel):
+    """Security-initiated quick contact for a registered driver.
+
+    The security guard types a license plate, the backend resolves it to
+    the owning driver, and dispatches a notification + email using the
+    selected preset (or the guard's custom message).
+    """
+    registration_number: str = Field(..., min_length=1, max_length=50)
+    title: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=2000)
+
+
+class ContactDriverResponse(BaseModel):
+    """Response confirming the contact notification was sent."""
+    notification_id: UUID
+    recipient_user_id: UUID
+    driver_name: str
+    driver_email: str
+    driver_phone: Optional[str] = None
+    title: str
+    message: str
+    sent_at: datetime
+
+
 # ==================== PAGINATION SCHEMAS ====================
 
 class PaginationParams(BaseModel):
