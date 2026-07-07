@@ -278,21 +278,29 @@ export default function AdminDashboard() {
     };
 
     const handleCreateAnnouncement = async (annData) => {
-        // Announcements are broadcast as alerts — requires a zone. We'll use the first zone as default.
         if (zones.length === 0) {
-            triggerToast('No zones available to attach announcement to.', 'error');
+            triggerToast('No zones available — please ensure parking zones are set up.', 'error');
             return;
         }
-        const firstZoneId = zones[0].id;
+        // annData.zoneId === 'all' means institution-wide; otherwise target a specific zone
+        const targetZoneId = (annData.zoneId && annData.zoneId !== 'all')
+            ? annData.zoneId
+            : zones[0].id; // DB requires a zone_id; silently use first for institution-wide
+        const isAllZones = !annData.zoneId || annData.zoneId === 'all';
+        const targetZone = zones.find(z => z.id === targetZoneId);
         try {
             const result = await uniparkApi.createAlert({
-                parking_zone_id: firstZoneId,
+                parking_zone_id: targetZoneId,
                 alert_type: annData.title,
                 message: annData.message,
                 severity: annData.severity || 'low',
+                // Pass zone context for the backend notification formatter
+                zone_context: isAllZones ? null : targetZone?.name,
             });
             setAnnouncements(prev => [mapAlert(result), ...prev]);
-            triggerToast('Announcement published and drivers notified via email.');
+            triggerToast(isAllZones
+                ? 'Institution-wide announcement published.'
+                : `Announcement published for ${targetZone?.name}.`);
         } catch (err) {
             triggerToast(`Failed to publish: ${err.message}`, 'error');
         }
@@ -553,6 +561,7 @@ export default function AdminDashboard() {
                                 <AnnouncementsTab
                                     announcements={announcements}
                                     setAnnouncements={setAnnouncements}
+                                    zones={zones}
                                     onCreateAnnouncement={handleCreateAnnouncement}
                                     onDismissAnnouncement={handleDismissAnnouncement}
                                     triggerToast={triggerToast}

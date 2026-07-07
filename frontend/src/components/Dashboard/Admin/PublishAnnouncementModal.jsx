@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit }) {
+export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit, submitting, zones = [] }) {
     if (!isOpen) return null;
 
     return (
@@ -36,6 +36,25 @@ export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setN
                     </div>
 
                     <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Target Audience</label>
+                        <select
+                            value={newAnn.zoneId || 'all'}
+                            onChange={(e) => setNewAnn({ ...newAnn, zoneId: e.target.value })}
+                            className="w-full bg-gray-100 border border-gray-200 text-gray-900 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        >
+                            <option value="all">All Zones (Institution-wide)</option>
+                            {zones.map(z => (
+                                <option key={z.id} value={z.id}>📍 {z.name}</option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-[11px] text-gray-400">
+                            {(!newAnn.zoneId || newAnn.zoneId === 'all')
+                                ? 'All registered drivers will be notified.'
+                                : `Only drivers currently in ${zones.find(z => z.id === newAnn.zoneId)?.name || 'the selected zone'} will be notified.`}
+                        </p>
+                    </div>
+
+                    <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Alert Severity</label>
                         <select
                             value={newAnn.severity}
@@ -58,9 +77,10 @@ export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setN
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 cursor-pointer"
+                            disabled={submitting}
+                            className="flex-1 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 cursor-pointer disabled:opacity-60"
                         >
-                            Publish Alert
+                            {submitting ? 'Publishing…' : 'Publish Alert'}
                         </button>
                     </div>
                 </form>

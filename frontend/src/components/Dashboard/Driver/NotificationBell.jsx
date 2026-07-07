@@ -350,12 +350,17 @@ function NotificationSection({ title, count, items, onItemClick }) {
 }
 
 function NotificationItem({ notification, onClick }) {
+    const [expanded, setExpanded] = React.useState(false);
     const style = getTypeStyle(notification.notification_type);
     const isUnseen = !notification.is_read;
     const timestamp = formatRelativeTime(notification.created_at);
     const absolute = formatAbsolute(notification.created_at);
+    const isLong = notification.message && notification.message.length > 80;
 
     const handleClick = () => {
+        if (isLong) {
+            setExpanded(prev => !prev);
+        }
         if (isUnseen && onClick) {
             onClick(notification.id);
         }
@@ -366,9 +371,8 @@ function NotificationItem({ notification, onClick }) {
             <button
                 type="button"
                 onClick={handleClick}
-                disabled={!isUnseen || !onClick}
                 className={`group w-full text-left px-4 py-3 flex gap-3 transition cursor-pointer ${isUnseen ? 'bg-blue-50/40 hover:bg-blue-50' : 'bg-white hover:bg-slate-50'
-                    } ${!isUnseen || !onClick ? 'cursor-default' : ''}`}
+                    }`}
             >
                 <div
                     className={`shrink-0 h-9 w-9 rounded-xl border flex items-center justify-center ${style.accent}`}
@@ -389,9 +393,14 @@ function NotificationItem({ notification, onClick }) {
                         )}
                     </div>
                     {notification.message && (
-                        <p className="mt-1 text-xs text-slate-500 leading-relaxed line-clamp-2">
+                        <p className={`mt-1 text-xs text-slate-500 leading-relaxed whitespace-pre-line ${expanded ? '' : 'line-clamp-2'}`}>
                             {notification.message}
                         </p>
+                    )}
+                    {isLong && (
+                        <span className="mt-1 text-[10px] font-semibold text-blue-500 group-hover:text-blue-600">
+                            {expanded ? 'Show less ↑' : 'Read more ↓'}
+                        </span>
                     )}
                     <p
                         className="mt-1.5 text-[10px] font-medium text-slate-400"

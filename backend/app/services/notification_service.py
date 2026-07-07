@@ -40,7 +40,7 @@ class NotificationService:
     ) -> None:
         """Create a notification in DB and dispatch email asynchronously."""
         # 1. Create DB entry
-        await NotificationService.create_db_notification(
+        NotificationService.create_db_notification(
             db=db,
             recipient_user_id=recipient_user.id,
             notification_type=notification_type,
@@ -101,15 +101,8 @@ class NotificationService:
     ) -> None:
         """Broadcast alert to all active drivers on campus."""
         drivers = db.query(User).filter(User.role == UserRole.DRIVER, User.is_active == True).all()
-        title = f"Parking Alert: {zone.zone_name}"
-        message = (
-            f"Dear Driver,\n\n"
-            f"A live parking alert has been reported for the following zone:\n\n"
-            f"  • Zone: {zone.zone_name} (Code: {zone.zone_code})\n"
-            f"  • Alert Type: {alert_type.replace('_', ' ').title()}\n"
-            f"  • Details: {alert_message}\n\n"
-            f"Please check alternative parking options if needed."
-        )
+        title = alert_type  # The admin's headline title IS the notification title
+        message = alert_message  # Send the body directly, without any zone wrapping
 
         for driver in drivers:
             await NotificationService.notify_user(

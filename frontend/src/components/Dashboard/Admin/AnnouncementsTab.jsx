@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import PublishAnnouncementModal from './PublishAnnouncementModal';
 
-export default function AnnouncementsTab({ announcements, onCreateAnnouncement, onDismissAnnouncement, triggerToast }) {
+export default function AnnouncementsTab({ announcements, onCreateAnnouncement, onDismissAnnouncement, triggerToast, zones = [] }) {
     const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
-    const [newAnn, setNewAnn] = useState({ title: '', message: '', severity: 'low' });
+    const [newAnn, setNewAnn] = useState({ title: '', message: '', severity: 'low', zoneId: 'all' });
     const [submitting, setSubmitting] = useState(false);
 
     const handleAnnSubmit = async (e) => {
@@ -12,7 +12,7 @@ export default function AnnouncementsTab({ announcements, onCreateAnnouncement, 
         try {
             await onCreateAnnouncement(newAnn);
             setIsAnnModalOpen(false);
-            setNewAnn({ title: '', message: '', severity: 'low' });
+            setNewAnn({ title: '', message: '', severity: 'low', zoneId: 'all' });
         } finally {
             setSubmitting(false);
         }
@@ -85,6 +85,7 @@ export default function AnnouncementsTab({ announcements, onCreateAnnouncement, 
                 setNewAnn={setNewAnn}
                 onSubmit={handleAnnSubmit}
                 submitting={submitting}
+                zones={zones}
             />
         </div>
     );
