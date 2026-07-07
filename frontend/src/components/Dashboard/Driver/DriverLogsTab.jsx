@@ -66,6 +66,7 @@ function toDisplayLog(log) {
         },
         vehicle: log.vehicle_registration || 'Linked Vehicle',
         plate: log.vehicle_registration || 'N/A',
+        entryTimestamp: entryDate ? entryDate.getTime() : null,
     };
 }
 
@@ -125,10 +126,18 @@ export default function DriverLogsTab() {
             const matchesStatus = statusFilter === 'All' || log.status === statusFilter;
 
             let matchesTime = true;
-            if (timeFilter === 'Today') {
-                matchesTime = log.timeDetails.date === 'Today';
-            } else if (timeFilter === 'Last 7 Days') {
-                matchesTime = log.timeDetails.date === 'Today' || log.timeDetails.date === 'Yesterday';
+            if (log.entryTimestamp) {
+                const now = Date.now();
+                const startOfToday = new Date();
+                startOfToday.setHours(0, 0, 0, 0);
+
+                if (timeFilter === 'Today') {
+                    matchesTime = log.entryTimestamp >= startOfToday.getTime();
+                } else if (timeFilter === 'Last 7 Days') {
+                    matchesTime = log.entryTimestamp >= now - 7 * 24 * 60 * 60 * 1000;
+                } else if (timeFilter === 'Last 30 Days') {
+                    matchesTime = log.entryTimestamp >= now - 30 * 24 * 60 * 60 * 1000;
+                }
             }
 
             return matchesSearch && matchesStatus && matchesTime;
@@ -413,10 +422,7 @@ export default function DriverLogsTab() {
                                 <span className="text-gray-400 font-medium">Exit Timestamp</span>
                                 <span className="font-semibold text-slate-800">{selectedLog.timeDetails.exit || 'N/A (Active Now)'}</span>
                             </div>
-                            <div className="flex justify-between pb-1">
-                                <span className="text-gray-400 font-medium">Cost / Fees</span>
-                                <span className="font-bold text-emerald-600">FREE PARKING</span>
-                            </div>
+                           
                         </div>
 
                         <button 
