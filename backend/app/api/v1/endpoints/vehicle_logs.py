@@ -385,12 +385,13 @@ async def log_vehicle_exit(
     # Update entry log with exit
     entry_log.exit_time = datetime.now(timezone.utc)
     entry_log.status = "exited"
+    
+    # Strip tzinfo to safely compare offset-naive and offset-aware datetimes
+    entry_naive = entry_log.entry_time.replace(tzinfo=None) if entry_log.entry_time.tzinfo else entry_log.entry_time
+    exit_naive = entry_log.exit_time.replace(tzinfo=None) if entry_log.exit_time.tzinfo else entry_log.exit_time
+    duration = (exit_naive - entry_naive).total_seconds() / 60
+    entry_log.duration_minutes = int(duration)
 
-    # Calculate duration
-    if entry_log.entry_time:
-        duration = (entry_log.exit_time -
-                    entry_log.entry_time).total_seconds() / 60
-        entry_log.duration_minutes = int(duration)
 
     # Release the parking space (if one was assigned) â€” this is what
     # frees up the bay.
