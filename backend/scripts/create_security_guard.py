@@ -1,4 +1,4 @@
-"""Create or fetch a security guard account for local testing.
+﻿"""Create or fetch a security guard account for local testing.
 
 Usage:
     python scripts/create_security_guard.py
@@ -6,7 +6,7 @@ Usage:
 
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Make the `app` package importable regardless of where the script is run.
@@ -33,7 +33,7 @@ def main() -> int:
         existing = db.query(User).filter(User.email == GUARD_EMAIL).first()
         if existing is not None:
             print(
-                "Found existing security user — making sure it is active and a 'security' role.")
+                "Found existing security user â€” making sure it is active and a 'security' role.")
             existing.is_active = True
             if existing.role != UserRole.SECURITY:
                 existing.role = UserRole.SECURITY
@@ -52,8 +52,8 @@ def main() -> int:
                 last_name=GUARD_LAST,
                 phone_number=GUARD_PHONE,
                 is_active=True,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             db.add(user)
             db.commit()
@@ -86,3 +86,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

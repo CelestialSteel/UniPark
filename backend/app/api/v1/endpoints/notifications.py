@@ -1,11 +1,11 @@
-"""Notifications Endpoints"""
+﻿"""Notifications Endpoints"""
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.schemas import NotificationResponse
 from app.models import Notification, User
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ async def mark_as_read(
         )
     
     notification.is_read = True
-    notification.read_at = datetime.utcnow()
+    notification.read_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(notification)
@@ -123,7 +123,7 @@ async def mark_all_as_read(
     
     for notification in notifications:
         notification.is_read = True
-        notification.read_at = datetime.utcnow()
+        notification.read_at = datetime.now(timezone.utc)
     
     db.commit()
     
@@ -159,3 +159,4 @@ async def delete_notification(
     db.commit()
     
     logger.info(f"Notification deleted: {notification_id}")
+

@@ -1,4 +1,4 @@
-"""Create or refresh the admin account for local testing.
+﻿"""Create or refresh the admin account for local testing.
 
 Mirrors scripts/create_security_guard.py for the ADMIN role.
 
@@ -8,7 +8,7 @@ Usage:
 
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Make the `app` package importable regardless of where the script is run.
@@ -36,7 +36,7 @@ def main() -> int:
 
         if existing is not None:
             print(
-                "Found existing admin user — forcing role=admin, "
+                "Found existing admin user â€” forcing role=admin, "
                 "is_active=True, and refreshing the password hash."
             )
             existing.is_active = True
@@ -55,8 +55,8 @@ def main() -> int:
                 last_name=ADMIN_LAST,
                 phone_number=ADMIN_PHONE,
                 is_active=True,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             db.add(user)
             db.commit()
@@ -89,3 +89,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

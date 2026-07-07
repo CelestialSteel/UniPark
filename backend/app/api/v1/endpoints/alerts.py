@@ -1,11 +1,11 @@
-"""Alerts Endpoints"""
+﻿"""Alerts Endpoints"""
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_admin_user, get_security_user
 from app.schemas import AlertCreateRequest, AlertResponse
 from app.models import Alert, ParkingZone, User
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ async def resolve_alert(
         )
     
     alert.is_active = False
-    alert.resolved_at = datetime.utcnow()
+    alert.resolved_at = datetime.now(timezone.utc)
     alert.resolved_notes = resolution_notes
     alert.resolved_by_user_id = current_user.id
     
@@ -147,3 +147,4 @@ async def get_zone_alert_history(
     ).order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
     
     return alerts
+

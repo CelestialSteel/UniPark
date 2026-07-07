@@ -6,6 +6,7 @@ from app.core.dependencies import get_current_user, get_security_user
 from app.schemas import VehicleEntryRequest, VehicleExitRequest, VehicleLogResponse
 from app.models import Vehicle, VehicleLog, ParkingSpace, ParkingZone, User, UserRole, ParkingSpaceStatus
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,12 +17,16 @@ def _normalize(value: str) -> str:
     return (value or "").strip().upper()
 
 
-def _as_utc(dt: datetime | None) -> datetime | None:
+EAT = ZoneInfo("Africa/Nairobi")
+
+
+def _as_eat(dt: datetime | None) -> datetime | None:
+    """Convert a datetime to Africa/Nairobi local time for display."""
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=timezone.utc).astimezone(EAT)
+    return dt.astimezone(EAT)
 
 
 def serialize_log(log: VehicleLog) -> dict:
@@ -47,8 +52,8 @@ def serialize_log(log: VehicleLog) -> dict:
         "parking_space_id": str(log.parking_space_id) if log.parking_space_id else None,
         "parking_zone_id": str(log.parking_zone_id),
         "status": log.status,
-        "entry_time": _as_utc(log.entry_time),
-        "exit_time": _as_utc(log.exit_time),
+        "entry_time": _as_eat(log.entry_time),
+        "exit_time": _as_eat(log.exit_time),
         "duration_minutes": log.duration_minutes,
         "vehicle_registration": plate,
         "driver_name": driver_name,
@@ -57,7 +62,7 @@ def serialize_log(log: VehicleLog) -> dict:
         "guest_registration": log.guest_registration,
         "guest_name": log.guest_name,
         "guest_group": log.guest_group,
-        "created_at": _as_utc(log.created_at),
+        "created_at": _as_eat(log.created_at),
     }
 
 
@@ -116,10 +121,10 @@ async def log_vehicle_entry(
     """Log vehicle entry (security only).
 
     Two flows are supported:
-      * **Registered vehicle** — ``registration_number`` is provided and the
+      * **Registered vehicle** â€” ``registration_number`` is provided and the
         vehicle is already linked to a driver. The driver's profile and
         active session will pick this up automatically.
-      * **Visitor** — ``guest_registration`` (and optionally ``guest_name`` /
+      * **Visitor** â€” ``guest_registration`` (and optionally ``guest_name`` /
         ``guest_group``) is provided because the plate is not yet in the
         system. The log is persisted with no FK to vehicles/drivers.
 
@@ -268,7 +273,7 @@ async def log_vehicle_entry(
         parking_space_id=parking_space_id,
         parking_zone_id=zone.id,
         status="entered",
-        entry_time=datetime.utcnow(),
+        entry_time=datetime.now(timezone.utc),
         recorded_by_user_id=current_user.id,
         guest_registration=guest_plate,
         guest_name=(request.guest_name or "").strip() or None,
@@ -378,7 +383,7 @@ async def log_vehicle_exit(
         )
 
     # Update entry log with exit
-    entry_log.exit_time = datetime.utcnow()
+    entry_log.exit_time = datetime.now(timezone.utc)
     entry_log.status = "exited"
 
     # Calculate duration
@@ -387,7 +392,7 @@ async def log_vehicle_exit(
                     entry_log.entry_time).total_seconds() / 60
         entry_log.duration_minutes = int(duration)
 
-    # Release the parking space (if one was assigned) — this is what
+    # Release the parking space (if one was assigned) â€” this is what
     # frees up the bay.
     if entry_log.parking_space_id:
         space = db.query(ParkingSpace).filter(
@@ -470,3 +475,4 @@ async def get_log(
         )
 
     return serialize_log(log)
+

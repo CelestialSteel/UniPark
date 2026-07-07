@@ -1,12 +1,25 @@
-"""SQLAlchemy ORM Models"""
+﻿"""SQLAlchemy ORM Models"""
 from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, ForeignKey, Text, Enum, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 
 Base = declarative_base()
+
+
+def utcnow() -> datetime:
+    """Timezone-aware UTC now â€” used as the default for every event-time
+    column so the values written to the DB are unambiguous UTC instants.
+
+    Returning a tz-aware datetime matches the new ``TIMESTAMP WITH TIME
+    ZONE`` columns (see ``scripts/migrate_event_time_columns_to_tz.py``)
+    and prevents the previous 3-hour drift caused by the DB session
+    timezone (Africa/Nairobi) reinterpreting naive UTC values as local
+    time.
+    """
+    return datetime.now(timezone.utc)
 
 
 def enum_values(enum_class):
@@ -68,9 +81,10 @@ class User(Base):
     last_name = Column(String(100))
     phone_number = Column(String(20))
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow,
+                        onupdate=utcnow)
 
     # Relationships
     driver_profile = relationship(
@@ -101,9 +115,10 @@ class Driver(Base):
     faculty_id = Column(String(50), nullable=True, unique=True)
     staff_id = Column(String(50), nullable=True, unique=True)
     license_number = Column(String(50), nullable=True)
-    license_expiry = Column(DateTime, nullable=True)
+    license_expiry = Column(DateTime(timezone=True), nullable=True)
     department = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="driver_profile")
@@ -130,9 +145,10 @@ class Vehicle(Base):
     registered_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     is_primary = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow,
+                        onupdate=utcnow)
 
     # Relationships
     driver = relationship("Driver", back_populates="vehicles")
@@ -165,9 +181,10 @@ class ParkingZone(Base):
     status = Column(Enum(ZoneStatus, values_callable=enum_values),
                     default=ZoneStatus.ACTIVE)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow,
+                        onupdate=utcnow)
 
     # Relationships
     spaces = relationship(
@@ -199,7 +216,8 @@ class ParkingSpace(Base):
         UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
     cordoned_reason = Column(Text)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
     # Relationships
     zone = relationship("ParkingZone", back_populates="spaces")
@@ -227,14 +245,15 @@ class VehicleLog(Base):
         UUID(as_uuid=True), ForeignKey("parking_zones.id"))
     status = Column(Enum(VehicleEntryStatus, values_callable=enum_values),
                     default=VehicleEntryStatus.ENTERED, nullable=False)
-    entry_time = Column(DateTime, nullable=False)
-    exit_time = Column(DateTime, nullable=True)
+    entry_time = Column(DateTime(timezone=True), nullable=False)
+    exit_time = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     recorded_by_user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
-    # Visitor fields — populated when the plate is not linked to a driver
+    # Visitor fields â€” populated when the plate is not linked to a driver
     guest_registration = Column(String(50), nullable=True)
     guest_name = Column(String(150), nullable=True)
     guest_group = Column(String(50), nullable=True)
@@ -261,12 +280,13 @@ class Alert(Base):
     message = Column(Text, nullable=False)
     severity = Column(String(20))  # low, medium, high
     is_active = Column(Boolean, default=True)
-    resolved_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_notes = Column(Text)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     resolved_by_user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
     # Relationships
     parking_zone = relationship("ParkingZone", back_populates="alerts")
@@ -288,8 +308,9 @@ class Notification(Base):
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
-    read_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
     # Relationships
     recipient_user = relationship("User", back_populates="notifications")
@@ -307,10 +328,11 @@ class Reservation(Base):
     driver_id = Column(UUID(as_uuid=True), ForeignKey("drivers.id"))
     parking_space_id = Column(
         UUID(as_uuid=True), ForeignKey("parking_spaces.id"))
-    reservation_date = Column(DateTime, nullable=False)
-    expiry_time = Column(DateTime, nullable=False)
+    reservation_date = Column(DateTime(timezone=True), nullable=False)
+    expiry_time = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True),
+                        default=utcnow, nullable=False)
 
 
 class ZoneOccupancyHistory(Base):
@@ -328,7 +350,8 @@ class ZoneOccupancyHistory(Base):
     occupied_spaces = Column(Integer)
     available_spaces = Column(Integer)
     occupancy_percentage = Column(Float)
-    recorded_at = Column(DateTime, default=datetime.utcnow)
+    recorded_at = Column(DateTime(timezone=True),
+                         default=utcnow, nullable=False)
 
     # Relationships
     parking_zone = relationship(
@@ -351,7 +374,7 @@ class AuditLog(Base):
     changes = Column(JSONB, nullable=True)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
 class VehicleUnlinkEvent(Base):
@@ -372,6 +395,7 @@ class VehicleUnlinkEvent(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reason = Column(String(120), nullable=False)
     details = Column(Text, nullable=True)
-    unlinked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unlinked_at = Column(DateTime(timezone=True),
+                         default=utcnow, nullable=False)
 
     vehicle = relationship("Vehicle", back_populates="unlink_events")

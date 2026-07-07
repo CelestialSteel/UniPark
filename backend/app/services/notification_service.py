@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
 """Notification Service to handle DB insertion and email dispatch"""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+EAT = ZoneInfo("Africa/Nairobi")
 from sqlalchemy.orm import Session
 from fastapi.concurrency import run_in_threadpool
 from app.models import Notification, NotificationType, User, UserRole, ParkingSpace, ParkingZone
@@ -8,10 +12,6 @@ from app.core.email import send_notification_email
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
-
-
-def _local_timestamp() -> str:
-    return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
 
 
 class NotificationService:
@@ -59,12 +59,13 @@ class NotificationService:
                 await run_in_threadpool(
                     send_notification_email,
                     recipient_user.email,
-                    f"UniPark Notification — {title}",
+                    f"UniPark Notification â€” {title}",
                     title,
                     message
                 )
             except Exception as e:
-                logger.error(f"Failed to dispatch email to {recipient_user.email}: {e}")
+                logger.error(
+                    f"Failed to dispatch email to {recipient_user.email}: {e}")
 
     @staticmethod
     async def notify_reservation(
@@ -77,15 +78,16 @@ class NotificationService:
         # Find driver user
         user = db.query(User).filter(User.id == driver_user_id).first()
         if not user:
-            logger.warning(f"No user found for reservation notification: {driver_user_id}")
+            logger.warning(
+                f"No user found for reservation notification: {driver_user_id}")
             return
 
         title = "Parking Space Reserved"
         message = (
             f"Hello {user.first_name or 'Driver'},\n\n"
             f"An administrator has reserved a parking space for you.\n\n"
-            f"  • Parking Zone: {zone.zone_name} (Code: {zone.zone_code})\n"
-            f"  • Space Number: {space.space_number}\n\n"
+            f" Parking Zone: {zone.zone_name} (Code: {zone.zone_code})\n"
+            f" Space Number: {space.space_number}\n\n"
             f"Please proceed to your reserved spot upon arrival."
         )
 
@@ -105,12 +107,22 @@ class NotificationService:
         alert_message: str,
         zone_context: str | None = None
     ) -> None:
-        """Broadcast alert to all active drivers on campus."""
-        drivers = db.query(User).filter(User.role == UserRole.DRIVER, User.is_active == True).all()
-        # Use the admin's headline directly as the notification title
+        """Broadcast alert to all active drivers on campus.
+
+        The alert's title is what the admin typed as ``alert_type`` and the
+        body is what the admin typed as ``message``. If the admin included
+        the zone name inline we keep that as-is. If not (``zone_context``
+        was supplied by the API) we prepend a one-line context so the
+        driver knows which zone the alert refers to.
+        """
+        drivers = db.query(User).filter(
+            User.role == UserRole.DRIVER, User.is_active == True
+        ).all()
+
         title = alert_type
-        # Use the admin's message body directly — no zone wrapping
         message = alert_message
+        if zone_context:
+            message = f"{zone_context}\n\n{message}"
 
         for driver in drivers:
             await NotificationService.notify_user(
@@ -120,7 +132,6 @@ class NotificationService:
                 title=title,
                 message=message
             )
-
 
     @staticmethod
     async def notify_vehicle_entry(
@@ -135,7 +146,7 @@ class NotificationService:
             f"Hello {user.first_name or 'Driver'},\n\n"
             f"Your registered vehicle (Plate: {registration_number}) has entered the campus.\n\n"
             f"  • Zone: {zone.zone_name}\n"
-            f"  • Time: {_local_timestamp()}\n\n"
+            f"  • Time: {datetime.now(EAT).strftime('%Y-%m-%d %H:%M:%S')} EAT\n\n"
             f"Drive safely!"
         )
 
@@ -160,7 +171,7 @@ class NotificationService:
             f"Hello {user.first_name or 'Driver'},\n\n"
             f"Your vehicle (Plate: {registration_number}) has exited the campus.\n\n"
             f"  • Duration: {duration_minutes} minutes\n"
-            f"  • Time: {_local_timestamp()}\n\n"
+            f"  • Time: {datetime.now(EAT).strftime('%Y-%m-%d %H:%M:%S')} EAT\n\n"
             f"Thank you for using UniPark!"
         )
 

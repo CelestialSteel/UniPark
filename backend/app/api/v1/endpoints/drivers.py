@@ -1,5 +1,5 @@
-"""Drivers Endpoints"""
-from datetime import datetime
+﻿"""Drivers Endpoints"""
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
@@ -342,7 +342,7 @@ async def lookup_driver_by_plate(
         .all()
     )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     current_parking: list[DriverLookupVehicleStatus] = []
     for log in active_logs:
         plate_str = log.vehicle.registration_number if log.vehicle else None
@@ -480,7 +480,7 @@ async def update_driver_password(
         )
 
     current_user.password_hash = hash_password(request.new_password)
-    current_user.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -607,3 +607,4 @@ async def activate_driver(
     logger.info(f"Driver activated: {driver.user.email}")
 
     return {"message": "Driver activated successfully"}
+

@@ -12,7 +12,17 @@ const placeholder = (value) => {
 
 const formatDateTime = (value) => {
     if (!value) return '—';
-    const date = new Date(value);
+    // The backend now writes timezone-aware UTC datetimes and FastAPI
+    // serialises them as ISO strings with an explicit "+00:00" / "Z"
+    // offset. If for any reason a value arrives without an offset
+    // marker we treat it as UTC — this is the contract the migration
+    // established and prevents the previous "3 hours behind" bug where
+    // naive strings were being parsed in the browser's local zone.
+    let iso = String(value);
+    if (!/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) {
+        iso = iso + 'Z';
+    }
+    const date = new Date(iso);
     return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 };
 

@@ -79,7 +79,16 @@ export default function AdminDashboard() {
 
     const formatDateTime = (value) => {
         if (!value) return '--';
-        const date = new Date(value);
+        // Backend now serialises every event-time as an ISO string with
+        // an explicit UTC offset ("...+00:00"). If a value arrives
+        // without a marker we treat it as UTC so it never gets parsed
+        // in the browser's local zone (the cause of the previous
+        // "3 hours behind" bug).
+        let iso = String(value);
+        if (!/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) {
+            iso = iso + 'Z';
+        }
+        const date = new Date(iso);
         return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
     };
 
