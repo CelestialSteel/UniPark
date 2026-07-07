@@ -198,9 +198,9 @@ export default function SecurityDashboard() {
                     </div>
                     <div>
                         <span className="text-xl font-bold text-blue-700">UniPark Security</span>
-                        <span className="ml-2 hidden sm:inline text-xs py-0.5 px-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200 font-medium">
+                        {/* <span className="ml-2 hidden sm:inline text-xs py-0.5 px-2 bg-blue-100 text-blue-700 rounded-full border border-blue-200 font-medium">
                             Main Gate Command
-                        </span>
+                        </span> */}
                     </div>
                 </div>
 

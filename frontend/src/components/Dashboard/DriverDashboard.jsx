@@ -171,7 +171,7 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
 
                     {/* Sidebar bottom: Profile & Support / Sign Out */}
                     <div className="mt-auto pt-6 border-t border-gray-200">
-                        <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 mb-5 text-left">
+                        {/* <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 mb-5 text-left">
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Support</p>
                             <p className="mt-1 text-[11px] text-slate-500 leading-normal">
                                 Facing issues with a zone? Contact security.
@@ -183,7 +183,7 @@ export default function DriverDashboard({ defaultTab = 'home' }) {
                             >
                                 Help Center
                             </button>
-                        </div>
+                        </div> */}
 
                         <button
                             onClick={() => setActiveTab('profile')}
