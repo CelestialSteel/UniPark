@@ -107,17 +107,10 @@ class NotificationService:
     ) -> None:
         """Broadcast alert to all active drivers on campus."""
         drivers = db.query(User).filter(User.role == UserRole.DRIVER, User.is_active == True).all()
-        zone_label = (zone_context or zone.zone_name or zone.zone_code or "Campus").strip()
-        title = f"Parking Alert: {zone_label}"
-        message = (
-            f"Dear Driver,\n\n"
-            f"A live parking alert has been reported for the following zone:\n\n"
-            f"  • Zone: {zone_label}"
-            f"{f' (Code: {zone.zone_code})' if zone.zone_code else ''}\n"
-            f"  • Alert Type: {alert_type}\n"
-            f"  • Details: {alert_message}\n\n"
-            f"Please check alternative parking options if needed."
-        )
+        # Use the admin's headline directly as the notification title
+        title = alert_type
+        # Use the admin's message body directly — no zone wrapping
+        message = alert_message
 
         for driver in drivers:
             await NotificationService.notify_user(
@@ -127,6 +120,7 @@ class NotificationService:
                 title=title,
                 message=message
             )
+
 
     @staticmethod
     async def notify_vehicle_entry(

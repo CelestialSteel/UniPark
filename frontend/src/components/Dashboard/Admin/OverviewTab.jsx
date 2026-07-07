@@ -176,6 +176,7 @@ export default function OverviewTab({ zones, metrics, handleCordonZoneToggle, on
                 newAnn={newAnn}
                 setNewAnn={setNewAnn}
                 onSubmit={handleAnnSubmit}
+                zones={zones}
             />
         </div>
     );

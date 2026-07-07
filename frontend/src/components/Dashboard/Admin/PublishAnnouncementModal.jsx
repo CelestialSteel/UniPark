@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit, submitting }) {
+export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setNewAnn, onSubmit, submitting, zones = [] }) {
     if (!isOpen) return null;
 
     return (
@@ -44,13 +44,13 @@ export default function PublishAnnouncementModal({ isOpen, onClose, newAnn, setN
                         >
                             <option value="all">All Zones (Institution-wide)</option>
                             {zones.map(z => (
-                                <option key={z.id} value={z.id}>📍 {z.name}</option>
+                                <option key={z.id} value={z.id}>{z.name}</option>
                             ))}
                         </select>
                         <p className="mt-1 text-[11px] text-gray-400">
                             {(!newAnn.zoneId || newAnn.zoneId === 'all')
                                 ? 'All registered drivers will be notified.'
-                                : `Only drivers currently in ${zones.find(z => z.id === newAnn.zoneId)?.name || 'the selected zone'} will be notified.`}
+                                : `Drivers in ${zones.find(z => z.id === newAnn.zoneId)?.name || 'selected zone'} will be notified.`}
                         </p>
                     </div>
 
