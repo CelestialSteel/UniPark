@@ -315,7 +315,7 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                             <span className="text-slate-400 text-base font-bold">&rsaquo;</span>
                         </button>
 
-                        <button
+                        {/* <button
                             onClick={() => alert('Support ticket raised. Security patrol officer notified.')}
                             className="flex items-center justify-between p-4.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-100 transition text-left cursor-pointer"
                         >
@@ -326,7 +326,7 @@ export default function DriverHomeTab({ user, setActiveTab }) {
                                 Report Parking Issue
                             </span>
                             <span className="text-slate-400 text-base font-bold">&rsaquo;</span>
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 

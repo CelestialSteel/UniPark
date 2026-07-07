@@ -75,7 +75,7 @@ export default function LoginPage() {
                         <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg">
                             <button
                                 type="button"
-                                onClick={() => { setRole('driver'); setEmail('12345'); setPassword('12345678'); }}
+                                onClick={() => { setRole('driver'); setEmail(''); setPassword(''); }}
                                 className={`py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${role === 'driver'
                                     ? 'bg-white text-blue-700 shadow-xs'
                                     : 'text-gray-600 hover:text-slate-900'
