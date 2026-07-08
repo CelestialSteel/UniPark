@@ -5,7 +5,7 @@ export default function About() {
             role: "Co-Founder & Developer",
             bio: "Griffin Sitati is a third-year student at Strathmore University pursuing Informatics and Computer Science. He aspires to build creative solutions to global problems and is also an aspiring novelist.",
             github: "https://github.com/CelestialSteel",
-            linkedin: "#",
+            linkedin: "https://www.linkedin.com/in/GriffinSitati/",
             image: "" // Image path to be added later
         },
         {
@@ -13,7 +13,7 @@ export default function About() {
             role: "Co-Founder & Developer",
             bio: "Dalton Mule is a third-year student at Strathmore University pursuing Informatics and Computer Science. He loves building, solving complex problems, and is an avid chess player.",
             github: "https://github.com/Dmu1e",
-            linkedin: "#",
+            linkedin: "https://www.linkedin.com/in/Dalton Mule/",
             image: "" //Image path to be added later
         }
     ];
