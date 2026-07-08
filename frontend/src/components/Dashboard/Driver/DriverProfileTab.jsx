@@ -515,7 +515,7 @@ export default function DriverProfileTab({ triggerToast }) {
                     </section>
 
                     {/* Account Deletion */}
-                    <section className="pt-4 border-t border-slate-200">
+                    {/* <section className="pt-4 border-t border-slate-200">
                         <p className="text-xs font-bold text-red-600">Account Management</p>
                         <p className="mt-1 text-[11px] text-slate-500 leading-normal">
                             Removing your account will permanently revoke your campus parking permissions and digital permits.
@@ -527,7 +527,7 @@ export default function DriverProfileTab({ triggerToast }) {
                         >
                             Request Deletion
                         </button>
-                    </section>
+                    </section> */}
                 </div>
             </div>
 

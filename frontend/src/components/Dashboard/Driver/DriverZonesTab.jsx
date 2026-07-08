@@ -300,7 +300,7 @@ export default function DriverZonesTab() {
             </div>
 
             {/* Map overview */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            {/* <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-slate-800">Zone Map Overview</h2>
                     <svg className="h-5 w-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,7 +314,7 @@ export default function DriverZonesTab() {
                         className="max-h-[300px] w-auto object-contain rounded-lg shadow-sm"
                     />
                 </div>
-            </div>
+            </div> */}
 
             {/* Dynamic details drawer/modal */}
             {selectedZone && (
